@@ -273,6 +273,9 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
     <div id="stepAddress">
       <h3>Endereço de entrega</h3>
       <p class="sub">Entregamos em todo o Brasil.</p>
+      <div id="savedDataBanner" style="display:none;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12.5px;color:var(--text-muted);">
+        Preenchemos com seus dados salvos. <button type="button" id="clearSavedDataBtn" style="background:none;border:none;color:var(--text);text-decoration:underline;cursor:pointer;padding:0;font-size:12.5px;">Mudar dados</button>
+      </div>
       <div class="field"><label>Nome completo</label><input type="text" id="ckName"></div>
       <div class="formgrid"><div class="field"><label>Rua</label><input type="text" id="ckStreet"></div><div class="field"><label>Número</label><input type="text" id="ckNumber"></div></div>
       <div class="formgrid"><div class="field"><label>Complemento (opcional)</label><input type="text" id="ckComplement" placeholder="apto, bloco, etc."></div><div class="field"><label>Bairro</label><input type="text" id="ckHood"></div></div>
@@ -283,6 +286,7 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
         <div class="field"><label>E-mail</label><input type="text" id="ckEmail" placeholder="voce@email.com"></div>
         <div class="field"><label>CPF</label><input type="text" id="ckDoc" placeholder="000.000.000-00"></div>
       </div>
+      <div class="field checkrow"><input type="checkbox" id="ckSaveData" style="width:auto;"><label for="ckSaveData" style="margin:0;">Salvar meus dados pra próxima compra</label></div>
       <p class="error-text" id="ckAddrError" style="display:none;"></p>
       <button class="btn btn-primary" id="toPayment" style="width:100%;margin-top:6px;">Continuar pro pagamento</button>
     </div>
@@ -727,9 +731,38 @@ document.getElementById('btnCart').onclick = openCart;
 document.getElementById('closeCart').onclick = closeCartFn;
 document.getElementById('overlay').onclick = closeCartFn;
 
+const SAVED_DATA_KEY = 'orizonWearSavedAddress';
+function fillSavedData(){
+  const raw = localStorage.getItem(SAVED_DATA_KEY);
+  const banner = document.getElementById('savedDataBanner');
+  if(!raw){ banner.style.display = 'none'; return; }
+  try{
+    const d = JSON.parse(raw);
+    document.getElementById('ckName').value = d.name || '';
+    document.getElementById('ckStreet').value = d.street || '';
+    document.getElementById('ckNumber').value = d.number || '';
+    document.getElementById('ckComplement').value = d.complement || '';
+    document.getElementById('ckHood').value = d.hood || '';
+    document.getElementById('ckCep').value = d.cep || '';
+    document.getElementById('ckCity').value = d.city || '';
+    document.getElementById('ckState').value = d.state || '';
+    document.getElementById('ckPhone').value = d.phone || '';
+    document.getElementById('ckEmail').value = d.email || '';
+    document.getElementById('ckDoc').value = d.document || '';
+    document.getElementById('ckSaveData').checked = true;
+    banner.style.display = 'block';
+  } catch(e){ banner.style.display = 'none'; }
+}
+document.getElementById('clearSavedDataBtn').onclick = () => {
+  localStorage.removeItem(SAVED_DATA_KEY);
+  ['ckName','ckStreet','ckNumber','ckComplement','ckHood','ckCep','ckCity','ckState','ckPhone','ckEmail','ckDoc'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('ckSaveData').checked = false;
+  document.getElementById('savedDataBanner').style.display = 'none';
+};
 document.getElementById('goCheckout').onclick = () => {
   if(state.cart.length===0) return;
   closeCartFn(); goStep(1);
+  fillSavedData();
   document.getElementById('checkoutModal').classList.add('show');
 };
 document.getElementById('closeCheckout').onclick = () => document.getElementById('checkoutModal').classList.remove('show');
@@ -754,6 +787,18 @@ document.getElementById('toPayment').onclick = async () => {
   if(!email || !doc){ errEl.textContent='Preencha e-mail e CPF.'; errEl.style.display='block'; return; }
   if(!city || !uf){ errEl.textContent='Preencha cidade e estado.'; errEl.style.display='block'; return; }
   if(!cep){ errEl.textContent='Preencha o CEP.'; errEl.style.display='block'; return; }
+
+  if(document.getElementById('ckSaveData').checked){
+    localStorage.setItem(SAVED_DATA_KEY, JSON.stringify({
+      name, street, number,
+      complement: document.getElementById('ckComplement').value.trim(),
+      hood: document.getElementById('ckHood').value.trim(),
+      cep, city: document.getElementById('ckCity').value.trim(), state: document.getElementById('ckState').value.trim(),
+      phone: document.getElementById('ckPhone').value.trim(), email, document: doc
+    }));
+  } else {
+    localStorage.removeItem(SAVED_DATA_KEY);
+  }
 
   const btn = document.getElementById('toPayment');
   const oldText = btn.textContent;
