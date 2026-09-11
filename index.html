@@ -840,7 +840,7 @@ document.getElementById('placeOrder').onclick = async () => {
   state.cart = [];
   renderCart(); renderProducts(); renderOrders();
   document.getElementById('orderOkMsg').style.display='block';
-  document.getElementById('orderOkMsg').textContent = 'Pedido registrado! Assim que o pagamento for confirmado, você recebe um e-mail com o código do pedido no endereço que você preencheu — é só abrir o app de e-mail depois.';
+  document.getElementById('orderOkMsg').innerHTML = 'Pedido registrado! Assim que o pagamento for confirmado, você recebe um e-mail com o código do pedido no endereço que você preencheu — é só abrir o app de e-mail depois.<br><br><strong>Muito obrigado por comprar com a gente! 🙏</strong>';
 
   placeBtn.disabled = false; placeBtn.textContent = oldBtnText;
 };
