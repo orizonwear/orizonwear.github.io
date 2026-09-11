@@ -258,9 +258,9 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
       <div class="pix-box" id="pixPanel">
         <div style="font-size:13px;color:var(--text-muted);">Pagar via Pix para</div>
         <div style="font-weight:700;font-size:16px;margin-top:2px;" id="pixReceiver">—</div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">Chave Pix (cole em "Pix Transferência" no seu banco e digite o valor manualmente):</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">Cole em "Pix Copia e Cola" no seu banco — o valor já vem preenchido sozinho:</div>
         <div class="pix-code" id="pixCodeBox">—</div>
-        <button class="btn btn-ghost btn-small" id="copyPix">Copiar chave</button>
+        <button class="btn btn-ghost btn-small" id="copyPix">Copiar código Pix</button>
       </div>
       <p class="notice" id="confirmNotice">Depois de pagar, toque em "Já paguei". O pedido fica <strong>aguardando confirmação</strong> até o dono da loja conferir o Pix e marcar como pago no painel admin. Prazo estimado de produção + envio: <strong id="deliveryEstimateSpan">até 15 dias úteis</strong> após a confirmação.</p>
       <p class="ok-text" id="orderOkMsg" style="display:none;"></p>
@@ -316,6 +316,44 @@ let state = {
 };
 
 function money(v){ return 'R$ ' + Number(v).toFixed(2).replace('.', ','); }
+
+// Gera o código "Pix Copia e Cola" oficial (padrão EMV do Banco Central), com valor travado.
+function stripAccents(s){ return s.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+function tlv(id, value){ return id + String(value.length).padStart(2,'0') + value; }
+function crc16(str){
+  let crc = 0xFFFF;
+  for(let i=0;i<str.length;i++){
+    crc ^= (str.charCodeAt(i) << 8);
+    for(let b=0;b<8;b++){
+      crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xFFFF : (crc << 1) & 0xFFFF;
+    }
+  }
+  return crc.toString(16).toUpperCase().padStart(4,'0');
+}
+function buildPixPayload({key, name, city, amount, txid}){
+  const cleanName = stripAccents(name).toUpperCase().replace(/[^A-Z0-9 ]/g,'').slice(0,25).trim() || 'ORIZON WEAR';
+  const cleanCity = stripAccents(city).toUpperCase().replace(/[^A-Z0-9 ]/g,'').slice(0,15).trim() || 'SAO PAULO';
+  const cleanTxid = (txid || '').replace(/[^A-Za-z0-9]/g,'').slice(0,25) || '***';
+  const amountStr = Number(amount).toFixed(2);
+
+  const merchantAccountInfo = tlv('00','br.gov.bcb.pix') + tlv('01', key);
+  const additionalData = tlv('05', cleanTxid);
+
+  let payload =
+    tlv('00','01') +
+    tlv('01','12') +
+    tlv('26', merchantAccountInfo) +
+    tlv('52','0000') +
+    tlv('53','986') +
+    tlv('54', amountStr) +
+    tlv('58','BR') +
+    tlv('59', cleanName) +
+    tlv('60', cleanCity) +
+    tlv('62', additionalData) +
+    '6304';
+
+  return payload + crc16(payload);
+}
 
 async function loadCoupons(){
   const {data,error} = await sb.from('coupons').select('*').order('created_at',{ascending:false});
@@ -696,7 +734,9 @@ document.getElementById('toConfirm').onclick = () => {
     return `<div class="rowline"><span>${item.qty}x ${escapeHtml(p.name)} (${item.size})</span><span>${money(p.price*item.qty)}</span></div>`;
   }).join('') + couponLine + `<div class="rowline total" style="margin-top:8px;"><span>Total</span><span>${money(total)}</span></div>`;
   document.getElementById('pixReceiver').textContent = 'Orizon Wear';
-  document.getElementById('pixCodeBox').textContent = state.settings.pixKey || 'sem-chave';
+  document.getElementById('pixCodeBox').textContent = state.settings.pixKey
+    ? buildPixPayload({ key: state.settings.pixKey, name: 'Orizon Wear', city: 'Sao Paulo', amount: total, txid: 'ORIZON'+Date.now().toString().slice(-8) })
+    : 'sem-chave';
   document.getElementById('deliveryEstimateSpan').textContent = state.deliveryEstimateText || 'até 15 dias úteis';
   document.getElementById('orderOkMsg').style.display='none';
   goStep(3);
