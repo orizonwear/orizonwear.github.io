@@ -173,6 +173,22 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
     <button class="btn btn-primary btn-small" id="saveSettingsBtn" style="margin-top:8px;">Salvar dados de recebimento</button>
     <p class="notice">Isso só guarda a chave pra mostrar no checkout. A confirmação do pagamento continua manual.</p>
   </div>
+
+  <div class="add-card" style="margin-bottom:24px;">
+    <h3>Cupons de desconto</h3>
+    <div class="formgrid">
+      <div class="field"><label>Código</label><input type="text" id="couponCodeInput" placeholder="ex: AMIGO10" style="text-transform:uppercase;"></div>
+      <div class="field"><label>Tipo</label>
+        <select id="couponTypeInput"><option value="percent">Percentual (%)</option><option value="fixed">Valor fixo (R$)</option></select>
+      </div>
+      <div class="field"><label>Valor</label><input type="number" id="couponValueInput" min="0" step="0.01" placeholder="ex: 10"></div>
+      <div class="field"><label>Usos máximos (opcional)</label><input type="number" id="couponMaxUsesInput" min="1" step="1" placeholder="deixe vazio p/ ilimitado"></div>
+    </div>
+    <button class="btn btn-primary btn-small" id="addCouponBtn">Criar cupom</button>
+    <p class="error-text" id="couponAdminError" style="display:none;"></p>
+    <div id="couponsList" style="margin-top:14px;"></div>
+  </div>
+
   <div class="section-head"><h2 style="font-size:22px;">Pedidos</h2></div>
   <div id="ordersList"><div class="loading">Carregando pedidos…</div></div>
 </section>
@@ -184,6 +200,12 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
   <div class="drawer-head"><h3 style="font-family:'IBM Plex Sans';font-size:18px;">Sua sacola</h3><button class="iconbtn btn-small" id="closeCart">Fechar</button></div>
   <div class="drawer-body" id="cartBody"></div>
   <div class="drawer-foot" id="cartFoot" style="display:none;">
+    <div style="display:flex;gap:8px;margin-bottom:4px;">
+      <input type="text" id="couponInput" placeholder="Código do cupom" style="flex:1;">
+      <button class="btn btn-ghost btn-small" id="applyCouponBtn">Aplicar</button>
+    </div>
+    <p class="error-text" id="couponError" style="display:none;margin:0 0 8px;"></p>
+    <div class="rowline" id="couponRow" style="display:none;color:var(--ok);"><span id="couponLabel"></span><span id="couponDiscountAmount"></span></div>
     <div class="rowline total"><span>Total</span><span id="cartTotal">R$ 0,00</span></div>
     <button class="btn btn-primary" id="goCheckout">Ir pro checkout</button>
   </div>
@@ -286,10 +308,47 @@ const COLORS = ['#c9c7c2','#a9a6a0','#8a8680','#6c6a65','#4a4844','#2a2926'];
 
 let state = {
   products: [], orders: [], settings:{pixKey:'',pixName:'',adminPassword:null},
-  cart: [], isAdmin:false, editingProductId:null, pendingSizeProduct:null, checkoutStep:1, tempImage:undefined
+  cart: [], isAdmin:false, editingProductId:null, pendingSizeProduct:null, checkoutStep:1, tempImage:undefined,
+  coupons: [], appliedCoupon: null, deliveryEstimateText: null
 };
 
 function money(v){ return 'R$ ' + Number(v).toFixed(2).replace('.', ','); }
+
+async function loadCoupons(){
+  const {data,error} = await sb.from('coupons').select('*').order('created_at',{ascending:false});
+  if(error){ console.error(error); return []; }
+  return data;
+}
+function renderCouponsAdmin(){
+  const box = document.getElementById('couponsList');
+  if(!box) return;
+  if(state.coupons.length === 0){ box.innerHTML = '<div class="empty-box">Nenhum cupom criado ainda.</div>'; return; }
+  box.innerHTML = state.coupons.map(c => {
+    const valueLabel = c.discount_type === 'percent' ? `${Number(c.discount_value)}%` : money(c.discount_value);
+    const usesLabel = c.max_uses ? `${c.used_count}/${c.max_uses} usos` : `${c.used_count} usos (ilimitado)`;
+    return `<div class="order-row">
+      <div>
+        <div style="font-weight:700;">${escapeHtml(c.code)} <span style="color:var(--text-muted);font-weight:400;">— ${valueLabel} off</span></div>
+        <div style="font-size:12px;color:var(--text-muted);">${usesLabel}</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span class="badge ${c.active ? 'pago':'pendente'}">${c.active ? 'Ativo':'Pausado'}</span>
+        <button class="btn btn-ghost btn-small" data-coupontoggle="${c.code}">${c.active?'Pausar':'Ativar'}</button>
+        <button class="btn btn-danger btn-small" data-coupondel="${c.code}">Excluir</button>
+      </div>
+    </div>`;
+  }).join('');
+  box.querySelectorAll('[data-coupontoggle]').forEach(b=>b.onclick=async()=>{
+    const c = state.coupons.find(x=>x.code===b.dataset.coupontoggle);
+    await sb.from('coupons').update({active: !c.active}).eq('code', c.code);
+    state.coupons = await loadCoupons(); renderCouponsAdmin();
+  });
+  box.querySelectorAll('[data-coupondel]').forEach(b=>b.onclick=async()=>{
+    if(!confirm('Excluir esse cupom?')) return;
+    await sb.from('coupons').delete().eq('code', b.dataset.coupondel);
+    state.coupons = await loadCoupons(); renderCouponsAdmin();
+  });
+}
 function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
 function mapProduct(row){ return {id:row.id,name:row.name,desc:row.desc_text||'',price:Number(row.price),stock:row.stock,color:row.color,sizes:row.sizes||[],active:row.active,image:row.image,montinkProductId:row.montink_product_id,montinkColor:row.montink_color}; }
 
@@ -414,7 +473,8 @@ document.getElementById('confirmAdmin').onclick = async () => {
   document.getElementById('adminHint').style.display='inline';
   document.getElementById('adminSettingsSection').style.display='block';
   document.getElementById('adminModal').classList.remove('show');
-  renderProducts(); renderOrders();
+  state.coupons = await loadCoupons();
+  renderProducts(); renderOrders(); renderCouponsAdmin();
 };
 function showErr(id, msg){ const e=document.getElementById(id); e.textContent=msg; e.style.display='block'; }
 
@@ -548,12 +608,28 @@ function renderCart(){
       <div class="qty-ctrl"><button data-dec="${idx}">−</button><span>${item.qty}</span><button data-inc="${idx}">+</button>
       <button data-rm="${idx}" style="margin-left:8px;border-color:var(--danger);color:var(--danger);">Remover</button></div></div></div>`;
   }).join('');
-  document.getElementById('cartTotal').textContent = money(total);
+  document.getElementById('cartTotal').textContent = money(cartTotalValue());
+  const couponRow = document.getElementById('couponRow');
+  if(state.appliedCoupon){
+    const discount = total - cartTotalValue();
+    document.getElementById('couponLabel').textContent = `Cupom ${state.appliedCoupon.code}`;
+    document.getElementById('couponDiscountAmount').textContent = '-' + money(discount);
+    couponRow.style.display = 'flex';
+  } else {
+    couponRow.style.display = 'none';
+  }
   body.querySelectorAll('[data-inc]').forEach(b=>b.onclick=()=>{ state.cart[b.dataset.inc].qty++; renderCart(); });
   body.querySelectorAll('[data-dec]').forEach(b=>b.onclick=()=>{ const i=b.dataset.dec; state.cart[i].qty--; if(state.cart[i].qty<=0) state.cart.splice(i,1); renderCart(); });
   body.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ state.cart.splice(b.dataset.rm,1); renderCart(); });
 }
-function cartTotalValue(){ return state.cart.reduce((sum,item)=>{ const p = state.products.find(x=>x.id===item.productId); return sum + (p ? p.price*item.qty : 0); },0); }
+function cartSubtotal(){ return state.cart.reduce((sum,item)=>{ const p = state.products.find(x=>x.id===item.productId); return sum + (p ? p.price*item.qty : 0); },0); }
+function cartTotalValue(){
+  const subtotal = cartSubtotal();
+  if(!state.appliedCoupon) return subtotal;
+  const c = state.appliedCoupon;
+  let discounted = c.discount_type === 'percent' ? subtotal - (subtotal * Number(c.discount_value) / 100) : subtotal - Number(c.discount_value);
+  return Math.max(0, discounted);
+}
 
 function openCart(){ document.getElementById('overlay').classList.add('show'); document.getElementById('cartDrawer').classList.add('show'); }
 function closeCartFn(){ document.getElementById('overlay').classList.remove('show'); document.getElementById('cartDrawer').classList.remove('show'); }
@@ -611,10 +687,11 @@ document.getElementById('toPayment').onclick = async () => {
 document.getElementById('backAddr').onclick = () => goStep(1);
 document.getElementById('toConfirm').onclick = () => {
   const total = cartTotalValue();
+  const couponLine = state.appliedCoupon ? `<div class="rowline" style="color:var(--ok);"><span>Cupom ${escapeHtml(state.appliedCoupon.code)}</span><span>-${money(cartSubtotal()-total)}</span></div>` : '';
   document.getElementById('orderSummary').innerHTML = state.cart.map(item=>{
     const p = state.products.find(x=>x.id===item.productId);
     return `<div class="rowline"><span>${item.qty}x ${escapeHtml(p.name)} (${item.size})</span><span>${money(p.price*item.qty)}</span></div>`;
-  }).join('') + `<div class="rowline total" style="margin-top:8px;"><span>Total</span><span>${money(total)}</span></div>`;
+  }).join('') + couponLine + `<div class="rowline total" style="margin-top:8px;"><span>Total</span><span>${money(total)}</span></div>`;
   document.getElementById('pixReceiver').textContent = 'Orizon Wear';
   document.getElementById('pixCodeBox').textContent = state.settings.pixKey || 'sem-chave';
   document.getElementById('deliveryEstimateSpan').textContent = state.deliveryEstimateText || 'até 15 dias úteis';
@@ -675,7 +752,7 @@ document.getElementById('placeOrder').onclick = async () => {
     document: document.getElementById('ckDoc').value.trim()
   };
   const total = cartTotalValue();
-  const {error} = await sb.from('orders').insert({items, total, method:'pix', address, status:'pendente'});
+  const {error} = await sb.from('orders').insert({items, total, method:'pix', address, status:'pendente', coupon_code: state.appliedCoupon ? state.appliedCoupon.code : null});
   if(error){ alert('Erro ao registrar pedido: '+error.message); placeBtn.disabled = false; placeBtn.textContent = oldBtnText; return; }
 
   const itemsSummary = items.map(i => `${i.qty}x ${i.name} (${i.size})`).join(', ');
@@ -688,6 +765,11 @@ document.getElementById('placeOrder').onclick = async () => {
   for(const item of state.cart){
     const p = state.products.find(x=>x.id===item.productId);
     if(p){ const newStock = Math.max(0, p.stock - item.qty); await sb.from('products').update({stock:newStock}).eq('id', p.id); }
+  }
+  if(state.appliedCoupon){
+    await sb.from('coupons').update({used_count: state.appliedCoupon.used_count + 1}).eq('code', state.appliedCoupon.code);
+    state.appliedCoupon = null;
+    document.getElementById('couponInput').value = '';
   }
   state.products = await loadProducts();
   state.orders = await loadOrders();
@@ -757,6 +839,37 @@ document.getElementById('saveSettingsBtn').onclick = async () => {
   state.settings.pixKey = pixKey; state.settings.pixName = pixName;
   const b = document.getElementById('saveSettingsBtn'); const old = b.textContent; b.textContent='Salvo!';
   setTimeout(()=>b.textContent=old, 1400);
+};
+
+document.getElementById('addCouponBtn').onclick = async () => {
+  const errEl = document.getElementById('couponAdminError'); errEl.style.display='none';
+  const code = document.getElementById('couponCodeInput').value.trim().toUpperCase();
+  const type = document.getElementById('couponTypeInput').value;
+  const value = parseFloat(document.getElementById('couponValueInput').value);
+  const maxUsesRaw = document.getElementById('couponMaxUsesInput').value.trim();
+  const maxUses = maxUsesRaw ? parseInt(maxUsesRaw) : null;
+  if(!code){ errEl.textContent='Digite um código.'; errEl.style.display='block'; return; }
+  if(isNaN(value) || value <= 0){ errEl.textContent='Valor inválido.'; errEl.style.display='block'; return; }
+  if(type==='percent' && value > 100){ errEl.textContent='Percentual não pode passar de 100.'; errEl.style.display='block'; return; }
+  const {error} = await sb.from('coupons').insert({code, discount_type:type, discount_value:value, max_uses:maxUses});
+  if(error){ errEl.textContent = error.message.includes('duplicate') ? 'Esse código já existe.' : 'Erro: '+error.message; errEl.style.display='block'; return; }
+  document.getElementById('couponCodeInput').value='';
+  document.getElementById('couponValueInput').value='';
+  document.getElementById('couponMaxUsesInput').value='';
+  state.coupons = await loadCoupons();
+  renderCouponsAdmin();
+};
+
+document.getElementById('applyCouponBtn').onclick = async () => {
+  const errEl = document.getElementById('couponError'); errEl.style.display='none';
+  const code = document.getElementById('couponInput').value.trim().toUpperCase();
+  if(!code) return;
+  const {data, error} = await sb.from('coupons').select('*').eq('code', code).single();
+  if(error || !data){ errEl.textContent='Cupom não encontrado.'; errEl.style.display='block'; return; }
+  if(!data.active){ errEl.textContent='Esse cupom não está mais ativo.'; errEl.style.display='block'; return; }
+  if(data.max_uses && data.used_count >= data.max_uses){ errEl.textContent='Esse cupom já atingiu o limite de usos.'; errEl.style.display='block'; return; }
+  state.appliedCoupon = data;
+  renderCart();
 };
 
 init();
