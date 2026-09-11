@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Orizon Wear</title>
+<meta property="og:title" content="Orizon Wear — Moletons masculinos">
+<meta property="og:description" content="Peso, corte e silêncio. Moletons com estampas exclusivas, entrega pra todo o Brasil, pagamento via Pix.">
+<meta property="og:image" content="https://orizonwear.github.io/og-image.png">
+<meta property="og:url" content="https://orizonwear.github.io">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Orizon Wear — Moletons masculinos">
+<meta name="twitter:description" content="Peso, corte e silêncio. Moletons com estampas exclusivas, entrega pra todo o Brasil.">
+<meta name="twitter:image" content="https://orizonwear.github.io/og-image.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
@@ -193,7 +202,13 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
   <div id="ordersList"><div class="loading">Carregando pedidos…</div></div>
 </section>
 
-<footer>Orizon Wear — feito com Claude · catálogo e pedidos salvos no Supabase</footer>
+<section class="wrap" style="padding:32px 20px;">
+  <div style="border-top:1px solid var(--border);padding-top:24px;">
+    <h3 style="font-size:16px;margin-bottom:8px;">Trocas e devoluções</h3>
+    <p style="font-size:13px;color:var(--text-muted);line-height:1.6;max-width:560px;">Aceitamos troca em até 7 dias corridos após o recebimento, caso a peça chegue com defeito de fabricação. Entre em contato pelo e-mail usado na compra, informando o código do pedido, e resolvemos o mais rápido possível.</p>
+  </div>
+</section>
+<footer>© Orizon Wear · Moletons masculinos · Entrega pra todo o Brasil</footer>
 
 <div class="overlay" id="overlay"></div>
 <div class="drawer" id="cartDrawer">
@@ -816,7 +831,7 @@ document.getElementById('placeOrder').onclick = async () => {
     }
   }
 
-  const {error} = await sb.from('orders').insert({items, total, method:'pix', address, status:'pendente', coupon_code: state.appliedCoupon ? state.appliedCoupon.code : null});
+  const {data: insertedOrder, error} = await sb.from('orders').insert({items, total, method:'pix', address, status:'pendente', coupon_code: state.appliedCoupon ? state.appliedCoupon.code : null}).select('id').single();
   if(error){ alert('Erro ao registrar pedido: '+error.message); placeBtn.disabled = false; placeBtn.textContent = oldBtnText; return; }
 
   const itemsSummary = items.map(i => `${i.qty}x ${i.name} (${i.size})`).join(', ');
@@ -840,7 +855,8 @@ document.getElementById('placeOrder').onclick = async () => {
   state.cart = [];
   renderCart(); renderProducts(); renderOrders();
   document.getElementById('orderOkMsg').style.display='block';
-  document.getElementById('orderOkMsg').innerHTML = 'Pedido registrado! Assim que o pagamento for confirmado, você recebe um e-mail com o código do pedido no endereço que você preencheu — é só abrir o app de e-mail depois.<br><br><strong>Muito obrigado por comprar com a gente! 🙏</strong>';
+  const orderNumber = insertedOrder ? insertedOrder.id.slice(0,8).toUpperCase() : '';
+  document.getElementById('orderOkMsg').innerHTML = `${orderNumber ? `<strong style="font-size:16px;">Seu pedido: #${orderNumber}</strong><br><br>` : ''}Pedido registrado! Assim que o pagamento for confirmado, você recebe um e-mail com o código do pedido no endereço que você preencheu — é só abrir o app de e-mail depois.<br><br><strong>Muito obrigado por comprar com a gente! 🙏</strong>`;
 
   placeBtn.disabled = false; placeBtn.textContent = oldBtnText;
 };
@@ -945,6 +961,89 @@ document.getElementById('applyCouponBtn').onclick = async () => {
 };
 
 init();
+</script>
+<!-- ASSISTENTE DE DÚVIDAS -->
+<button id="faqToggle" aria-label="Tirar dúvidas" style="position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--text);color:var(--bg);border:none;font-size:24px;box-shadow:0 4px 14px rgba(0,0,0,0.25);cursor:pointer;z-index:80;display:flex;align-items:center;justify-content:center;">💬</button>
+<div id="faqPanel" style="display:none;position:fixed;bottom:86px;right:20px;width:min(320px, calc(100vw - 40px));max-height:70vh;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,0.3);z-index:80;flex-direction:column;overflow:hidden;">
+  <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+    <strong style="font-family:'Libre Caslon Text',serif;font-size:16px;">Dúvidas rápidas</strong>
+    <button id="faqClose" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">✕</button>
+  </div>
+  <div id="faqMessages" style="flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px;max-height:340px;"></div>
+  <div style="padding:10px;border-top:1px solid var(--border);display:flex;gap:8px;">
+    <input type="text" id="faqInput" placeholder="Digite sua dúvida..." style="flex:1;font-size:13px;">
+    <button id="faqSend" class="btn btn-primary btn-small">Enviar</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const FAQ = [
+    { kws:['prazo','quando chega','entrega demora','dias'], a:'O prazo estimado (produção + envio) varia pelo seu CEP, e aparece certinho na hora de fechar o pedido. Em geral fica entre 9 e 15 dias úteis, dependendo da região.' },
+    { kws:['frete','entrega','envia','manda pra'], a:'Entregamos pra todo o Brasil! O frete é calculado automaticamente de acordo com o seu CEP na hora do checkout.' },
+    { kws:['tamanho','medida','p ','m ','g ','gg','veste'], a:'Temos P, M, G e GG — mas nem toda cor tem todos os tamanhos disponíveis no momento (isso muda com o estoque da fábrica). No card de cada produto, os tamanhos riscados em vermelho estão indisponíveis agora.' },
+    { kws:['pagamento','pagar','pix','cartao','cartão','boleto'], a:'Aceitamos só Pix, direto com a loja. O valor já vem certinho no código — é só colar em "Pix Copia e Cola" no seu banco.' },
+    { kws:['troca','devolu','cancelar','desisti'], a:'Aceitamos troca em até 7 dias após o recebimento, caso a peça tenha algum defeito de fabricação. Nesses casos, entre em contato que resolvemos.' },
+    { kws:['rastre','onde esta','onde está','status do pedido'], a:'Depois que seu pagamento é confirmado, você recebe um e-mail com o código do pedido e o link de rastreio da transportadora.' },
+    { kws:['cupom','desconto','codigo promo'], a:'Se você tiver um código de cupom, é só digitar na sacola, no linkzinho "Tem um cupom?", antes de ir pro checkout.' },
+    { kws:['cor','estampa','modelo','design'], a:'Temos 4 moletons: Cinza (Mountain Lake), Azul (Cliffside Sky), Preto (Desert Night) e Branco (Island Escape) — cada um com estampa exclusiva na frente e nas costas.' },
+    { kws:['contato','falar com','atendente','duvida','dúvida','humano'], a:'Esse assistente responde as dúvidas mais comuns automaticamente. Pra outros assuntos, aguarde o contato da loja pelo e-mail que você usou na compra.' },
+  ];
+  const FALLBACK = 'Não tenho certeza sobre isso ainda 🤔 Aqui vão as dúvidas mais comuns que eu sei responder:';
+  const QUICK = ['Prazo de entrega','Formas de pagamento','Tamanhos disponíveis','Troca e devolução'];
+
+  function addMsg(text, fromUser){
+    const box = document.getElementById('faqMessages');
+    const bubble = document.createElement('div');
+    bubble.style.cssText = `max-width:85%;padding:9px 12px;border-radius:10px;font-size:13.5px;line-height:1.4;${fromUser ? 'align-self:flex-end;background:var(--text);color:var(--bg);' : 'align-self:flex-start;background:var(--surface-2);color:var(--text);'}`;
+    bubble.textContent = text;
+    box.appendChild(bubble);
+    box.scrollTop = box.scrollHeight;
+  }
+  function addQuickReplies(){
+    const box = document.getElementById('faqMessages');
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;align-self:flex-start;';
+    QUICK.forEach(q=>{
+      const b = document.createElement('button');
+      b.textContent = q;
+      b.style.cssText = 'font-size:12px;padding:6px 10px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;';
+      b.onclick = () => handleQuestion(q);
+      wrap.appendChild(b);
+    });
+    box.appendChild(wrap);
+    box.scrollTop = box.scrollHeight;
+  }
+  function handleQuestion(q){
+    addMsg(q, true);
+    const lower = q.toLowerCase();
+    const hit = FAQ.find(f => f.kws.some(k => lower.includes(k)));
+    setTimeout(()=>{
+      if(hit){ addMsg(hit.a, false); }
+      else { addMsg(FALLBACK, false); addQuickReplies(); }
+    }, 300);
+  }
+
+  document.getElementById('faqToggle').onclick = () => {
+    const panel = document.getElementById('faqPanel');
+    const opening = panel.style.display === 'none';
+    panel.style.display = opening ? 'flex' : 'none';
+    if(opening && document.getElementById('faqMessages').children.length === 0){
+      addMsg('Oi! Posso ajudar com dúvidas sobre prazo, pagamento, tamanhos, troca e mais. O que você quer saber?', false);
+      addQuickReplies();
+    }
+  };
+  document.getElementById('faqClose').onclick = () => { document.getElementById('faqPanel').style.display = 'none'; };
+  document.getElementById('faqSend').onclick = () => {
+    const input = document.getElementById('faqInput');
+    if(!input.value.trim()) return;
+    handleQuestion(input.value.trim());
+    input.value = '';
+  };
+  document.getElementById('faqInput').addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){ document.getElementById('faqSend').click(); }
+  });
+})();
 </script>
 </body>
 </html>
