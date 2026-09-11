@@ -330,13 +330,21 @@ function crc16(str){
   }
   return crc.toString(16).toUpperCase().padStart(4,'0');
 }
+function sanitizePixKey(key){
+  const raw = (key || '').trim();
+  if(raw.includes('@')) return raw; // e-mail: mantém como está
+  if(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(raw)) return raw; // chave aleatória (UUID): mantém
+  const hasPlus = raw.startsWith('+');
+  const digits = raw.replace(/\D/g,''); // CPF/CNPJ/telefone: só números
+  return hasPlus ? '+' + digits : digits;
+}
 function buildPixPayload({key, name, city, amount, txid}){
   const cleanName = stripAccents(name).toUpperCase().replace(/[^A-Z0-9 ]/g,'').slice(0,25).trim() || 'ORIZON WEAR';
   const cleanCity = stripAccents(city).toUpperCase().replace(/[^A-Z0-9 ]/g,'').slice(0,15).trim() || 'SAO PAULO';
   const cleanTxid = (txid || '').replace(/[^A-Za-z0-9]/g,'').slice(0,25) || '***';
   const amountStr = Number(amount).toFixed(2);
 
-  const merchantAccountInfo = tlv('00','br.gov.bcb.pix') + tlv('01', key);
+  const merchantAccountInfo = tlv('00','br.gov.bcb.pix') + tlv('01', sanitizePixKey(key));
   const additionalData = tlv('05', cleanTxid);
 
   let payload =
