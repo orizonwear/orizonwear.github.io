@@ -200,11 +200,14 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
   <div class="drawer-head"><h3 style="font-family:'IBM Plex Sans';font-size:18px;">Sua sacola</h3><button class="iconbtn btn-small" id="closeCart">Fechar</button></div>
   <div class="drawer-body" id="cartBody"></div>
   <div class="drawer-foot" id="cartFoot" style="display:none;">
-    <div style="display:flex;gap:8px;margin-bottom:4px;">
-      <input type="text" id="couponInput" placeholder="Código do cupom" style="flex:1;">
-      <button class="btn btn-ghost btn-small" id="applyCouponBtn">Aplicar</button>
+    <button type="button" id="toggleCouponBtn" style="background:none;border:none;color:var(--text-muted);font-size:12.5px;text-decoration:underline;cursor:pointer;padding:0;margin-bottom:8px;text-align:left;">Tem um cupom?</button>
+    <div id="couponFields" style="display:none;">
+      <div style="display:flex;gap:8px;margin-bottom:4px;">
+        <input type="text" id="couponInput" placeholder="Código do cupom" style="flex:1;">
+        <button class="btn btn-ghost btn-small" id="applyCouponBtn">Aplicar</button>
+      </div>
+      <p class="error-text" id="couponError" style="display:none;margin:0 0 8px;"></p>
     </div>
-    <p class="error-text" id="couponError" style="display:none;margin:0 0 8px;"></p>
     <div class="rowline" id="couponRow" style="display:none;color:var(--ok);"><span id="couponLabel"></span><span id="couponDiscountAmount"></span></div>
     <div class="rowline total"><span>Total</span><span id="cartTotal">R$ 0,00</span></div>
     <button class="btn btn-primary" id="goCheckout">Ir pro checkout</button>
@@ -860,6 +863,12 @@ document.getElementById('addCouponBtn').onclick = async () => {
   renderCouponsAdmin();
 };
 
+document.getElementById('toggleCouponBtn').onclick = () => {
+  const fields = document.getElementById('couponFields');
+  const isHidden = fields.style.display === 'none';
+  fields.style.display = isHidden ? 'block' : 'none';
+  document.getElementById('toggleCouponBtn').style.display = isHidden ? 'none' : 'block';
+};
 document.getElementById('applyCouponBtn').onclick = async () => {
   const errEl = document.getElementById('couponError'); errEl.style.display='none';
   const code = document.getElementById('couponInput').value.trim().toUpperCase();
