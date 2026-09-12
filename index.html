@@ -234,7 +234,38 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
     <p style="font-size:13px;color:var(--text-muted);line-height:1.6;max-width:560px;">Aceitamos troca em até 7 dias corridos após o recebimento, caso a peça chegue com defeito de fabricação. Entre em contato pelo e-mail usado na compra, informando o código do pedido, e resolvemos o mais rápido possível.</p>
   </div>
 </section>
-<footer>© Orizon Wear · Moletons masculinos · Entrega pra todo o Brasil</footer>
+<footer>© Orizon Wear · Moletons masculinos · Entrega pra todo o Brasil<br><button type="button" id="openReviewsBtn" style="background:none;border:none;color:var(--text-muted);font-size:11.5px;text-decoration:underline;cursor:pointer;padding:0;margin-top:8px;">Ver avaliações dos clientes</button></footer>
+
+<!-- MODAL: VER AVALIAÇÕES -->
+<div class="modal-back" id="reviewsModal">
+  <div class="modal" style="max-width:480px;">
+    <h3>Avaliações dos clientes</h3>
+    <p class="sub" id="reviewsSummary">Carregando...</p>
+    <div id="reviewsListBox" style="max-height:55vh;overflow-y:auto;display:flex;flex-direction:column;gap:14px;"></div>
+    <button class="btn btn-ghost btn-small" id="closeReviewsModal" style="width:100%;margin-top:16px;">Fechar</button>
+  </div>
+</div>
+
+<!-- MODAL: DEIXAR AVALIAÇÃO -->
+<div class="modal-back" id="writeReviewModal">
+  <div class="modal">
+    <h3>Como foi seu moletom?</h3>
+    <p class="sub" id="writeReviewProduct">—</p>
+    <div class="field">
+      <label>Nota</label>
+      <div id="starPicker" style="font-size:28px;letter-spacing:4px;cursor:pointer;">☆☆☆☆☆</div>
+    </div>
+    <div class="field"><label>Conte como foi (opcional)</label><textarea id="reviewTextInput" placeholder="O que você achou do moletom?"></textarea></div>
+    <div class="field">
+      <label>Foto (opcional)</label>
+      <input type="file" id="reviewPhotoInput" accept="image/*">
+      <img id="reviewPhotoPreview" class="img-preview" style="max-width:160px;">
+    </div>
+    <p class="error-text" id="reviewError" style="display:none;"></p>
+    <p class="ok-text" id="reviewOk" style="display:none;"></p>
+    <button class="btn btn-primary" id="submitReviewBtn" style="width:100%;margin-top:8px;">Enviar avaliação</button>
+  </div>
+</div>
 
 <div class="overlay" id="overlay"></div>
 <div class="drawer" id="cartDrawer">
@@ -1031,7 +1062,103 @@ document.getElementById('applyCouponBtn').onclick = async () => {
   errEl.style.color = 'var(--ok)';
 };
 
+// ===== SISTEMA DE AVALIAÇÕES =====
+let reviewState = { rating: 0, photo: null, orderId: null };
+
+function renderStars(){
+  const box = document.getElementById('starPicker');
+  box.innerHTML = '';
+  for(let i=1;i<=5;i++){
+    const s = document.createElement('span');
+    s.textContent = i <= reviewState.rating ? '★' : '☆';
+    s.style.color = i <= reviewState.rating ? 'var(--text)' : 'var(--border)';
+    s.onclick = () => { reviewState.rating = i; renderStars(); };
+    box.appendChild(s);
+  }
+}
+document.getElementById('reviewPhotoInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    reviewState.photo = reader.result;
+    const preview = document.getElementById('reviewPhotoPreview');
+    preview.src = reader.result;
+    preview.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+});
+document.getElementById('submitReviewBtn').onclick = async () => {
+  const errEl = document.getElementById('reviewError'); errEl.style.display='none';
+  if(reviewState.rating === 0){ errEl.textContent='Escolhe uma nota de 1 a 5 estrelas.'; errEl.style.display='block'; return; }
+  const btn = document.getElementById('submitReviewBtn');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+  const {data: orderData} = await sb.from('orders').select('items, address').eq('id', reviewState.orderId).single();
+  const productName = orderData?.items?.[0]?.name || 'Moletom Orizon Wear';
+  const customerName = orderData?.address?.name || 'Cliente';
+  const {error} = await sb.from('reviews').insert({
+    order_id: reviewState.orderId, product_name: productName, customer_name: customerName,
+    rating: reviewState.rating, review_text: document.getElementById('reviewTextInput').value.trim() || null,
+    photo: reviewState.photo
+  });
+  btn.disabled = false; btn.textContent = 'Enviar avaliação';
+  if(error){ errEl.textContent = 'Erro ao enviar: '+error.message; errEl.style.display='block'; return; }
+  document.getElementById('reviewOk').textContent = 'Avaliação enviada! Muito obrigado 🙏';
+  document.getElementById('reviewOk').style.display='block';
+  setTimeout(()=>{ document.getElementById('writeReviewModal').classList.remove('show'); }, 1800);
+};
+
+async function checkReviewLink(){
+  const params = new URLSearchParams(window.location.search);
+  const orderId = params.get('review');
+  if(!orderId) return;
+  const {data: order, error} = await sb.from('orders').select('id, items, delivered_notified_at').eq('id', orderId).single();
+  if(error || !order || !order.delivered_notified_at){ return; }
+  reviewState = { rating:0, photo:null, orderId: order.id };
+  document.getElementById('writeReviewProduct').textContent = (order.items||[]).map(i=>`${i.qty}x ${i.name} (${i.size})`).join(', ');
+  document.getElementById('reviewPhotoPreview').style.display='none';
+  document.getElementById('reviewTextInput').value='';
+  document.getElementById('reviewOk').style.display='none';
+  renderStars();
+  document.getElementById('writeReviewModal').classList.add('show');
+}
+
+async function loadReviews(){
+  const {data} = await sb.from('reviews').select('*').order('created_at',{ascending:false});
+  return data || [];
+}
+function renderReviews(reviews){
+  const summary = document.getElementById('reviewsSummary');
+  const box = document.getElementById('reviewsListBox');
+  if(reviews.length === 0){
+    summary.textContent = 'Ainda não temos avaliações — seja o primeiro a comprar!';
+    box.innerHTML = '';
+    return;
+  }
+  const avg = (reviews.reduce((s,r)=>s+r.rating,0) / reviews.length).toFixed(1);
+  summary.textContent = `${'★'.repeat(Math.round(avg))}${'☆'.repeat(5-Math.round(avg))}  ${avg} de 5 — ${reviews.length} avaliação(ões)`;
+  box.innerHTML = reviews.map(r => `
+    <div style="border-bottom:1px solid var(--border);padding-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <strong style="font-size:13.5px;">${escapeHtml(r.customer_name||'Cliente')}</strong>
+        <span style="color:var(--text);font-size:13px;">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">${escapeHtml(r.product_name)}</div>
+      ${r.review_text ? `<p style="font-size:13px;margin:0 0 8px;">${escapeHtml(r.review_text)}</p>` : ''}
+      ${r.photo ? `<img src="${r.photo}" style="max-width:140px;border-radius:8px;">` : ''}
+    </div>
+  `).join('');
+}
+document.getElementById('openReviewsBtn').onclick = async () => {
+  document.getElementById('reviewsModal').classList.add('show');
+  document.getElementById('reviewsSummary').textContent = 'Carregando...';
+  const reviews = await loadReviews();
+  renderReviews(reviews);
+};
+document.getElementById('closeReviewsModal').onclick = () => document.getElementById('reviewsModal').classList.remove('show');
+
 init();
+checkReviewLink();
 </script>
 <!-- ASSISTENTE DE DÚVIDAS -->
 <button id="faqToggle" aria-label="Tirar dúvidas" style="position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--text);color:var(--bg);border:none;font-size:24px;box-shadow:0 4px 14px rgba(0,0,0,0.25);cursor:pointer;z-index:80;display:flex;align-items:center;justify-content:center;">💬</button>
