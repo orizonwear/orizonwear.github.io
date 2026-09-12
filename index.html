@@ -249,21 +249,21 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
 <!-- MODAL: DEIXAR AVALIAÇÃO -->
 <div class="modal-back" id="writeReviewModal">
   <div class="modal">
-    <h3>Como foi seu moletom?</h3>
+    <h3>Autoavaliação</h3>
     <p class="sub" id="writeReviewProduct">—</p>
+    <div class="field"><label>Escreva um texto (opcional)</label><textarea id="reviewTextInput" placeholder="O que você achou do moletom?"></textarea></div>
     <div class="field">
-      <label>Nota</label>
-      <div id="starPicker" style="font-size:28px;letter-spacing:4px;cursor:pointer;">☆☆☆☆☆</div>
-    </div>
-    <div class="field"><label>Conte como foi (opcional)</label><textarea id="reviewTextInput" placeholder="O que você achou do moletom?"></textarea></div>
-    <div class="field">
-      <label>Foto (opcional)</label>
+      <label>Adicione uma foto (opcional)</label>
       <input type="file" id="reviewPhotoInput" accept="image/*">
       <img id="reviewPhotoPreview" class="img-preview" style="max-width:160px;">
     </div>
+    <div class="field">
+      <label>Estrelas</label>
+      <div id="starPicker" style="font-size:28px;letter-spacing:4px;cursor:pointer;">☆☆☆☆☆</div>
+    </div>
     <p class="error-text" id="reviewError" style="display:none;"></p>
     <p class="ok-text" id="reviewOk" style="display:none;"></p>
-    <button class="btn btn-primary" id="submitReviewBtn" style="width:100%;margin-top:8px;">Enviar avaliação</button>
+    <button class="btn btn-primary" id="submitReviewBtn" style="width:100%;margin-top:8px;">Enviar</button>
   </div>
 </div>
 
@@ -1118,6 +1118,7 @@ document.getElementById('submitReviewBtn').onclick = async () => {
   if(error){ errEl.textContent = 'Erro ao enviar: '+error.message; errEl.style.display='block'; return; }
   document.getElementById('reviewOk').textContent = 'Avaliação enviada! Muito obrigado 🙏';
   document.getElementById('reviewOk').style.display='block';
+  window.history.replaceState({}, '', window.location.pathname);
   setTimeout(()=>{ document.getElementById('writeReviewModal').classList.remove('show'); }, 1800);
 };
 
