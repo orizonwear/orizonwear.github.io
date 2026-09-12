@@ -311,7 +311,20 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
       <div class="formgrid"><div class="field"><label>Rua</label><input type="text" id="ckStreet"></div><div class="field"><label>Número</label><input type="text" id="ckNumber"></div></div>
       <div class="formgrid"><div class="field"><label>Complemento (opcional)</label><input type="text" id="ckComplement" placeholder="apto, bloco, etc."></div><div class="field"><label>Bairro</label><input type="text" id="ckHood"></div></div>
       <div class="field"><label>CEP</label><input type="text" id="ckCep"></div>
-      <div class="formgrid"><div class="field"><label>Cidade</label><input type="text" id="ckCity" placeholder="Sua cidade"></div><div class="field"><label>Estado</label><input type="text" id="ckState" placeholder="UF (ex: SP)"></div></div>
+      <div class="formgrid"><div class="field"><label>Cidade</label><input type="text" id="ckCity" placeholder="Sua cidade"></div><div class="field"><label>Estado</label>
+        <select id="ckState">
+          <option value="">Selecione</option>
+          <option value="AC">AC — Acre</option><option value="AL">AL — Alagoas</option><option value="AP">AP — Amapá</option>
+          <option value="AM">AM — Amazonas</option><option value="BA">BA — Bahia</option><option value="CE">CE — Ceará</option>
+          <option value="DF">DF — Distrito Federal</option><option value="ES">ES — Espírito Santo</option><option value="GO">GO — Goiás</option>
+          <option value="MA">MA — Maranhão</option><option value="MT">MT — Mato Grosso</option><option value="MS">MS — Mato Grosso do Sul</option>
+          <option value="MG">MG — Minas Gerais</option><option value="PA">PA — Pará</option><option value="PB">PB — Paraíba</option>
+          <option value="PR">PR — Paraná</option><option value="PE">PE — Pernambuco</option><option value="PI">PI — Piauí</option>
+          <option value="RJ">RJ — Rio de Janeiro</option><option value="RN">RN — Rio Grande do Norte</option><option value="RS">RS — Rio Grande do Sul</option>
+          <option value="RO">RO — Rondônia</option><option value="RR">RR — Roraima</option><option value="SC">SC — Santa Catarina</option>
+          <option value="SP">SP — São Paulo</option><option value="SE">SE — Sergipe</option><option value="TO">TO — Tocantins</option>
+        </select>
+      </div></div>
       <div class="field"><label>Telefone</label><input type="tel" id="ckPhone" placeholder="(DDD) 90000-0000"></div>
       <div class="formgrid">
         <div class="field"><label>E-mail</label><input type="text" id="ckEmail" placeholder="voce@email.com"></div>
