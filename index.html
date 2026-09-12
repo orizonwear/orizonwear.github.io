@@ -399,6 +399,14 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
     <div class="field"><label>Cor de destaque (usada se não houver foto)</label><div class="colorpick" id="colorPick"></div></div>
     <div class="field"><label>Tamanhos disponíveis</label><div class="sizecheck" id="sizeCheckboxes"></div></div>
     <div class="field checkrow"><input type="checkbox" id="pActive" checked style="width:auto;"><label style="margin:0;">Item ativo (aparece na loja)</label></div>
+    <div class="field" style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px;">
+      <label style="font-weight:600;color:var(--text);">Ligação com a Montink (obrigatório pra automação funcionar)</label>
+      <div class="formgrid" style="margin-top:8px;">
+        <div class="field"><label>ID do produto na Montink</label><input type="text" id="pMontinkId" placeholder="ex: 5968711"></div>
+        <div class="field"><label>Cor cadastrada na Montink</label><input type="text" id="pMontinkColor" placeholder="ex: Azul Marinho"></div>
+      </div>
+      <p style="font-size:11.5px;color:var(--text-muted);margin:6px 0 0;">O ID aparece na URL do produto quando você abre ele no painel da Montink (o número no final do link). A cor precisa ser digitada <strong>exatamente</strong> como está cadastrada lá.</p>
+    </div>
     <p class="error-text" id="productError" style="display:none;"></p>
     <div style="display:flex;gap:10px;margin-top:6px;"><button class="btn btn-ghost" id="cancelProduct">Cancelar</button><button class="btn btn-primary" id="saveProduct" style="flex:1;">Salvar</button></div>
   </div>
@@ -647,6 +655,8 @@ function openProductModal(id){
   document.getElementById('pPrice').value = p.price;
   document.getElementById('pStock').value = p.stock;
   document.getElementById('pActive').checked = p.active;
+  document.getElementById('pMontinkId').value = p.montinkProductId || '';
+  document.getElementById('pMontinkColor').value = p.montinkColor || '';
   colorPick.querySelectorAll('.swab').forEach(sw => sw.classList.toggle('sel', sw.dataset.c === p.color));
   colorPick.querySelectorAll('.swab').forEach(sw => sw.onclick = () => { colorPick.querySelectorAll('.swab').forEach(x=>x.classList.remove('sel')); sw.classList.add('sel'); });
   sizeBox.querySelectorAll('input').forEach(cb => cb.checked = (p.sizes||[]).includes(cb.value));
@@ -685,13 +695,16 @@ document.getElementById('saveProduct').onclick = async () => {
   if(isNaN(price) || price < 0){ showErr('productError','Preço inválido.'); return; }
   if(isNaN(stock) || stock < 0){ showErr('productError','Estoque inválido.'); return; }
   if(sizes.length === 0){ showErr('productError','Selecione ao menos um tamanho.'); return; }
+  const montinkProductId = document.getElementById('pMontinkId').value.trim();
+  const montinkColor = document.getElementById('pMontinkColor').value.trim();
+  if(!montinkProductId || !montinkColor){ showErr('productError','Preencha o ID e a cor da Montink — sem isso, os pedidos desse produto não conseguem ser enviados automaticamente pra fábrica.'); return; }
 
   const existingImage = state.editingProductId ? state.products.find(p=>p.id===state.editingProductId).image : null;
   const finalImage = state.tempImage === undefined ? existingImage : state.tempImage;
   const desc = document.getElementById('pDesc').value.trim();
   const active = document.getElementById('pActive').checked;
   const color = sel ? sel.dataset.c : COLORS[0];
-  const dbRow = {name, desc_text:desc, price, stock, color, sizes, active, image:finalImage};
+  const dbRow = {name, desc_text:desc, price, stock, color, sizes, active, image:finalImage, montink_product_id: montinkProductId, montink_color: montinkColor};
 
   if(state.editingProductId){
     const {error} = await sb.from('products').update(dbRow).eq('id', state.editingProductId);
