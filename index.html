@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Orizon Wear</title>
-<meta property="og:title" content="Orizon Wear — Moletons masculinos">
+<meta property="og:title" content="Orizon Wear — Moletons unissex">
 <meta property="og:description" content="Peso, corte e silêncio. Moletons com estampas exclusivas, entrega pra todo o Brasil, pagamento via Pix.">
 <meta property="og:image" content="https://orizonwear.github.io/og-image.png">
 <meta property="og:url" content="https://orizonwear.github.io">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Orizon Wear — Moletons masculinos">
+<meta name="twitter:title" content="Orizon Wear — Moletons unissex">
 <meta name="twitter:description" content="Peso, corte e silêncio. Moletons com estampas exclusivas, entrega pra todo o Brasil.">
 <meta name="twitter:image" content="https://orizonwear.github.io/og-image.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -154,7 +154,7 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
 <section class="hero">
   <div class="horizon-line"></div>
   <div class="wrap hero-inner">
-    <div class="eyebrow-plain">Moletons masculinos · entrega pra todo o Brasil · produção + envio em até 15 dias úteis</div>
+    <div class="eyebrow-plain">Moletons unissex · entrega pra todo o Brasil · produção + envio em até 15 dias úteis</div>
     <h1>Peso, corte e silêncio.</h1>
     <p class="lead">Moletons pensados pro fim de tarde na cidade — malha pesada, corte reto, sem estampa gritando. Pagamento só por Pix, direto pra conta da loja.</p>
     <div class="hero-cta">
@@ -244,7 +244,7 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
     <p style="font-size:13px;color:var(--text-muted);line-height:1.6;max-width:560px;">Aceitamos troca em até 7 dias corridos após o recebimento, caso a peça chegue com defeito de fabricação. Entre em contato pelo e-mail usado na compra, informando o código do pedido, e resolvemos o mais rápido possível.</p>
   </div>
 </section>
-<footer>© Orizon Wear · Moletons masculinos · Entrega pra todo o Brasil</footer>
+<footer>© Orizon Wear · Moletons unissex · Entrega pra todo o Brasil</footer>
 
 <!-- MODAL: VER AVALIAÇÕES -->
 <div class="modal-back" id="reviewsModal">
@@ -282,15 +282,6 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
   <div class="drawer-head"><h3 style="font-family:'IBM Plex Sans';font-size:18px;">Sua sacola</h3><button class="iconbtn btn-small" id="closeCart">Fechar</button></div>
   <div class="drawer-body" id="cartBody"></div>
   <div class="drawer-foot" id="cartFoot" style="display:none;">
-    <button type="button" id="toggleCouponBtn" style="background:none;border:none;color:var(--text-muted);font-size:12.5px;text-decoration:underline;cursor:pointer;padding:0;margin-bottom:8px;text-align:left;">Tem um cupom?</button>
-    <div id="couponFields" style="display:none;">
-      <div style="display:flex;gap:8px;margin-bottom:4px;">
-        <input type="text" id="couponInput" placeholder="Código do cupom" style="flex:1;">
-        <button class="btn btn-ghost btn-small" id="applyCouponBtn">Aplicar</button>
-      </div>
-      <p class="error-text" id="couponError" style="display:none;margin:0 0 8px;"></p>
-    </div>
-    <div class="rowline" id="couponRow" style="display:none;color:var(--ok);"><span id="couponLabel"></span><span id="couponDiscountAmount"></span></div>
     <div class="rowline total"><span>Total</span><span id="cartTotal">R$ 0,00</span></div>
     <button class="btn btn-primary" id="goCheckout">Ir pro checkout</button>
   </div>
@@ -318,9 +309,13 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
         Preenchemos com seus dados salvos. <button type="button" id="clearSavedDataBtn" style="background:none;border:none;color:var(--text);text-decoration:underline;cursor:pointer;padding:0;font-size:12.5px;">Mudar dados</button>
       </div>
       <div class="field"><label>Nome completo</label><input type="text" id="ckName"></div>
+      <div class="field">
+        <label>CEP</label>
+        <input type="text" id="ckCep" placeholder="00000-000" inputmode="numeric">
+        <p id="cepStatus" style="font-size:11.5px;color:var(--text-muted);margin:4px 0 0;"></p>
+      </div>
       <div class="formgrid"><div class="field"><label>Rua</label><input type="text" id="ckStreet"></div><div class="field"><label>Número</label><input type="text" id="ckNumber"></div></div>
       <div class="formgrid"><div class="field"><label>Complemento (opcional)</label><input type="text" id="ckComplement" placeholder="apto, bloco, etc."></div><div class="field"><label>Bairro</label><input type="text" id="ckHood"></div></div>
-      <div class="field"><label>CEP</label><input type="text" id="ckCep"></div>
       <div class="formgrid"><div class="field"><label>Cidade</label><input type="text" id="ckCity" placeholder="Sua cidade"></div><div class="field"><label>Estado</label>
         <select id="ckState">
           <option value="">Selecione</option>
@@ -347,6 +342,16 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
     <div id="stepPayment" style="display:none;">
       <h3>Pagamento via Pix</h3>
       <p class="sub">A Orizon Wear aceita só Pix, direto pra conta da loja.</p>
+      <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;">
+        <label style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;display:block;">Tem um cupom de desconto?</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="couponInput" placeholder="Código do cupom" style="flex:1;">
+          <button class="btn btn-primary btn-small" id="applyCouponBtn">Aplicar</button>
+        </div>
+        <p class="error-text" id="couponError" style="display:none;margin:8px 0 0;"></p>
+        <div class="rowline" id="couponRow" style="display:none;color:var(--ok);margin-top:8px;"><span id="couponLabel"></span><span id="couponDiscountAmount"></span></div>
+        <div class="rowline total" style="margin-top:8px;"><span>Total</span><span id="paymentTotalAmount">R$ 0,00</span></div>
+      </div>
       <div style="border:1px solid var(--border);border-radius:8px;padding:12px 14px;"><strong>Pix</strong><div style="font-size:12px;color:var(--text-muted);">Aprovação mais rápida, sem taxas de cartão</div></div>
       <p class="notice warn">Este site é uma demonstração: a chave Pix mostrada é a que o dono cadastrou, mas a confirmação do pagamento é manual.</p>
       <div style="display:flex;gap:10px;margin-top:14px;"><button class="btn btn-ghost" id="backAddr">Voltar</button><button class="btn btn-primary" id="toConfirm" style="flex:1;">Revisar pedido</button></div>
@@ -757,6 +762,7 @@ function renderCart(){
       <button data-rm="${idx}" style="margin-left:8px;border-color:var(--danger);color:var(--danger);">Remover</button></div></div></div>`;
   }).join('');
   document.getElementById('cartTotal').textContent = money(cartTotalValue());
+  document.getElementById('paymentTotalAmount').textContent = money(cartTotalValue());
   const couponRow = document.getElementById('couponRow');
   if(state.appliedCoupon){
     const discount = total - cartTotalValue();
@@ -784,6 +790,30 @@ function closeCartFn(){ document.getElementById('overlay').classList.remove('sho
 document.getElementById('btnCart').onclick = openCart;
 document.getElementById('closeCart').onclick = closeCartFn;
 document.getElementById('overlay').onclick = closeCartFn;
+
+document.getElementById('ckCep').addEventListener('blur', async () => {
+  const cepInput = document.getElementById('ckCep');
+  const statusEl = document.getElementById('cepStatus');
+  const cleanCep = cepInput.value.replace(/\D/g,'');
+  if(cleanCep.length !== 8){ statusEl.textContent = ''; return; }
+  statusEl.textContent = 'Buscando endereço...';
+  statusEl.style.color = 'var(--text-muted)';
+  try{
+    const resp = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+    const data = await resp.json();
+    if(data.erro){ statusEl.textContent = 'CEP não encontrado — preencha manualmente.'; statusEl.style.color='var(--danger)'; return; }
+    document.getElementById('ckStreet').value = data.logradouro || '';
+    document.getElementById('ckHood').value = data.bairro || '';
+    document.getElementById('ckCity').value = data.localidade || '';
+    document.getElementById('ckState').value = data.uf || '';
+    statusEl.textContent = 'Endereço encontrado! Só falta o número.';
+    statusEl.style.color = 'var(--ok)';
+    document.getElementById('ckNumber').focus();
+  } catch(e){
+    statusEl.textContent = 'Não consegui buscar automaticamente — preencha manualmente.';
+    statusEl.style.color = 'var(--danger)';
+  }
+});
 
 const SAVED_DATA_KEY = 'orizonWearSavedAddress';
 function fillSavedData(){
@@ -1065,12 +1095,6 @@ document.getElementById('addCouponBtn').onclick = async () => {
   renderCouponsAdmin();
 };
 
-document.getElementById('toggleCouponBtn').onclick = () => {
-  const fields = document.getElementById('couponFields');
-  const isHidden = fields.style.display === 'none';
-  fields.style.display = isHidden ? 'block' : 'none';
-  document.getElementById('toggleCouponBtn').style.display = isHidden ? 'none' : 'block';
-};
 document.getElementById('applyCouponBtn').onclick = async () => {
   const errEl = document.getElementById('couponError'); errEl.style.display='none';
   const code = document.getElementById('couponInput').value.trim().toUpperCase();
