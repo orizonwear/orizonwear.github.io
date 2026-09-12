@@ -1010,7 +1010,7 @@ document.getElementById('placeOrder').onclick = async () => {
   renderCart(); renderProducts(); renderOrders();
   document.getElementById('orderOkMsg').style.display='block';
   const orderNumber = insertedOrder ? insertedOrder.id.slice(0,8).toUpperCase() : '';
-  document.getElementById('orderOkMsg').innerHTML = `${orderNumber ? `<strong style="font-size:16px;">Seu pedido: #${orderNumber}</strong><br><br>` : ''}Pedido registrado! Assim que o pagamento for confirmado, você recebe um e-mail com o código do pedido no endereço que você preencheu — é só abrir o app de e-mail depois.<br><br><strong>Muito obrigado por comprar com a gente! 🙏</strong>`;
+  document.getElementById('orderOkMsg').innerHTML = `${orderNumber ? `<strong style="font-size:16px;">Seu pedido: #${orderNumber}</strong><br><br>` : ''}Pedido registrado! Assim que o pagamento for confirmado, você recebe um e-mail com o código do pedido no endereço que você preencheu — é só abrir o app de e-mail depois.<br><br><strong>Muito obrigado por comprar com a gente! 🙏</strong><br><br>📧 <strong>Confira seu e-mail</strong> pra acompanhar o rastreio, a transportadora e o prazo estimado de entrega — a gente te avisa por lá em cada etapa, inclusive quando o pedido chegar até você.`;
 
   placeBtn.disabled = false; placeBtn.textContent = oldBtnText;
 };
