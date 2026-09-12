@@ -243,7 +243,18 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
     <p style="font-size:13px;color:var(--text-muted);line-height:1.6;max-width:560px;">Como cada moletom é impresso sob demanda especialmente pra você, só aceitamos troca em caso de <strong style="color:var(--text);">defeito de fabricação ou impressão</strong> (peça rasgada, estampa borrada, etc.) — não cobre escolha errada de tamanho ou arrependimento, já que a peça não pode ser reaproveitada pra outro cliente. Se identificar um defeito, entre em contato em até <strong style="color:var(--text);">7 dias corridos</strong> após o recebimento, pelo e-mail usado na compra, informando o código do pedido.</p>
   </div>
 </section>
-<footer>© Orizon Wear · Moletons unissex · Entrega pra todo o Brasil<br><button type="button" id="btnAdmin" style="background:none;border:none;color:var(--text-muted);font-size:11.5px;text-decoration:underline;cursor:pointer;padding:0;margin-top:8px;">Admin</button></footer>
+<footer>© Orizon Wear · Moletons unissex · Entrega pra todo o Brasil<br><button type="button" id="btnAdmin" style="background:none;border:none;color:var(--text-muted);font-size:11.5px;text-decoration:underline;cursor:pointer;padding:0;margin-top:8px;">Admin</button> · <button type="button" id="btnReportProblem" style="background:none;border:none;color:var(--text-muted);font-size:11.5px;text-decoration:underline;cursor:pointer;padding:0;margin-top:8px;">Reportar problema com meu pedido</button></footer>
+
+<div class="modal-back" id="reportModal">
+  <div class="modal">
+    <h3>Reportar problema</h3>
+    <p class="sub">Só pra defeito de fabricação/impressão — não cobre tamanho errado. Isso abre seu app de e-mail com uma mensagem já preenchida pra gente.</p>
+    <div class="field"><label>Código do pedido (veio no e-mail)</label><input type="text" id="reportOrderCode" placeholder="ex: A3F92B7C"></div>
+    <div class="field"><label>Descreva o problema</label><textarea id="reportDescription" placeholder="O que veio errado ou com defeito?"></textarea></div>
+    <button class="btn btn-primary" id="sendReportBtn" style="width:100%;margin-top:6px;">Abrir e-mail pra loja</button>
+    <button class="btn btn-ghost btn-small" id="closeReportModal" style="width:100%;margin-top:8px;">Fechar</button>
+  </div>
+</div>
 
 <!-- MODAL: VER AVALIAÇÕES -->
 <div class="modal-back" id="reviewsModal">
@@ -523,9 +534,9 @@ async function loadOrders(){
   return data.map(o=>({id:o.id,date:o.created_at,items:o.items,total:Number(o.total),method:o.method,address:o.address,status:o.status,montinkSynced:!!o.montink_synced_at,carrierName:o.carrier_name,trackingUrl:o.tracking_url,montinkCode:o.montink_order_code}));
 }
 async function loadSettings(){
-  const {data,error} = await sb.from('store_settings').select('pix_key,pix_name').eq('id',1).single();
-  if(error){ console.error(error); return {pixKey:'',pixName:'',adminPassword:null}; }
-  return {pixKey:data.pix_key||'',pixName:data.pix_name||'', adminPassword:undefined};
+  const {data,error} = await sb.from('store_settings').select('pix_key,pix_name,contact_email').eq('id',1).single();
+  if(error){ console.error(error); return {pixKey:'',pixName:'',contactEmail:'',adminPassword:null}; }
+  return {pixKey:data.pix_key||'',pixName:data.pix_name||'', contactEmail:data.contact_email||'', adminPassword:undefined};
 }
 async function loadAdminPassword(){
   const {data,error} = await sb.from('store_settings').select('admin_password').eq('id',1).single();
@@ -538,7 +549,7 @@ async function init(){
   state.products = await loadProducts();
   state.orders = await loadOrders();
   const s = await loadSettings();
-  state.settings.pixKey = s.pixKey; state.settings.pixName = s.pixName;
+  state.settings.pixKey = s.pixKey; state.settings.pixName = s.pixName; state.settings.contactEmail = s.contactEmail;
   renderProducts();
   renderOrders();
   document.getElementById('pixKeyInput').value = state.settings.pixKey || '';
@@ -1216,6 +1227,21 @@ document.getElementById('openReviewsBtn').onclick = async () => {
   renderReviews(reviews);
 };
 document.getElementById('closeReviewsModal').onclick = () => document.getElementById('reviewsModal').classList.remove('show');
+
+document.getElementById('btnReportProblem').onclick = () => {
+  document.getElementById('reportOrderCode').value = '';
+  document.getElementById('reportDescription').value = '';
+  document.getElementById('reportModal').classList.add('show');
+};
+document.getElementById('closeReportModal').onclick = () => document.getElementById('reportModal').classList.remove('show');
+document.getElementById('sendReportBtn').onclick = () => {
+  const code = document.getElementById('reportOrderCode').value.trim();
+  const desc = document.getElementById('reportDescription').value.trim();
+  const toEmail = state.settings.contactEmail || 'contato@orizonwear.com';
+  const subject = `Problema com pedido ${code || '(sem código)'} — Orizon Wear`;
+  const body = `Olá! Meu pedido chegou com um problema.\n\nCódigo do pedido: ${code || '(não informado)'}\n\nDescrição do problema:\n${desc || '(não descrito)'}`;
+  window.location.href = `mailto:${toEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+};
 
 init();
 checkReviewLink();
