@@ -741,16 +741,40 @@ async function toggleActive(id){
   renderProducts();
 }
 
-function openSizeModal(productId){
+async function openSizeModal(productId){
   const p = state.products.find(x=>x.id===productId);
   state.pendingSizeProduct = productId;
   document.getElementById('sizeModalTitle').textContent = 'Tamanho — ' + p.name;
+  document.getElementById('sizeOptions').innerHTML = '<p style="font-size:13px;color:var(--text-muted);">Conferindo estoque...</p>';
+  document.getElementById('sizeModal').classList.add('show');
+
+  let liveSizes = p.sizes;
+  try {
+    const checkItems = SIZES.map(s => ({ montink_product_id: p.montinkProductId, montink_color: p.montinkColor, size: s }));
+    const resp = await fetch(`${SUPABASE_URL}/functions/v1/montink-check-availability`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
+      body: JSON.stringify({ items: checkItems })
+    });
+    const result = await resp.json();
+    if(result.results){
+      liveSizes = result.results.filter(r=>r.available).map(r=>r.size);
+      const order = ['P','M','G','GG'];
+      liveSizes.sort((a,b)=>order.indexOf(a)-order.indexOf(b));
+      if(JSON.stringify(liveSizes) !== JSON.stringify(p.sizes)){
+        p.sizes = liveSizes;
+        p.stock = liveSizes.length > 0 ? 1000 : 0;
+        await sb.from('products').update({ sizes: liveSizes, stock: p.stock }).eq('id', p.id);
+        renderProducts();
+      }
+    }
+  } catch(e) { /* se falhar, usa o que já tinha no cache */ }
+
   document.getElementById('sizeOptions').innerHTML = SIZES.map(s=>{
-    const avail = p.sizes.includes(s);
+    const avail = liveSizes.includes(s);
     if(avail) return `<label><input type="radio" name="szpick" value="${s}"> ${s}</label>`;
     return `<label style="color:var(--danger);border-color:var(--danger);opacity:.6;cursor:not-allowed;"><input type="radio" name="szpick" value="${s}" disabled> ${s} (indisponível)</label>`;
   }).join('');
-  document.getElementById('sizeModal').classList.add('show');
 }
 document.getElementById('cancelSize').onclick = () => document.getElementById('sizeModal').classList.remove('show');
 document.getElementById('confirmSize').onclick = () => {
