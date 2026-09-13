@@ -1140,6 +1140,7 @@ function renderOrders(){
         ${o.status==='pendente' ? `<button class="btn btn-primary btn-small" data-pay="${o.id}">Marcar pago</button>`:''}
         ${o.status==='pago' && !o.montinkSynced ? `<button class="btn btn-ghost btn-small" data-retry="${o.id}">Reenviar p/ Montink</button>`:''}
         ${o.status==='pago' ? `<button class="btn btn-ghost btn-small" data-ship="${o.id}">Marcar enviado</button>`:''}
+        <button class="btn btn-danger btn-small" data-delorder="${o.id}">Excluir</button>
       </div>
     </div>`).join('');
 async function sendToMontink(orderId){
@@ -1171,6 +1172,11 @@ box.querySelectorAll('[data-retry]').forEach(b=>b.onclick=async()=>{
   state.orders = await loadOrders(); renderOrders();
 });
 box.querySelectorAll('[data-ship]').forEach(b=>b.onclick=async()=>{ await sb.from('orders').update({status:'enviado'}).eq('id', b.dataset.ship); state.orders = await loadOrders(); renderOrders(); });
+box.querySelectorAll('[data-delorder]').forEach(b=>b.onclick=async()=>{
+  if(!confirm('Excluir esse pedido permanentemente? Isso não pode ser desfeito.')) return;
+  await sb.from('orders').delete().eq('id', b.dataset.delorder);
+  state.orders = await loadOrders(); renderOrders();
+});
 }
 
 document.getElementById('saveSettingsBtn').onclick = async () => {
