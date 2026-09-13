@@ -1072,7 +1072,7 @@ document.getElementById('placeOrder').onclick = async () => {
   const address = {
     name: document.getElementById('ckName').value.trim(), street: document.getElementById('ckStreet').value.trim(),
     number: document.getElementById('ckNumber').value.trim(), complement: document.getElementById('ckComplement').value.trim(),
-    hood: document.getElementById('ckHood').value.trim(), cep: document.getElementById('ckCep').value.trim(),
+    hood: document.getElementById('ckHood').value.trim(), cep: document.getElementById('ckCep').value.replace(/\D/g,'').replace(/(\d{5})(\d{3})/,'$1-$2'),
     city: document.getElementById('ckCity').value.trim(), state: document.getElementById('ckState').value.trim(),
     phone: document.getElementById('ckPhone').value.trim(),
     email: document.getElementById('ckEmail').value.trim(),
