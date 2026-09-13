@@ -439,6 +439,29 @@ let state = {
 
 function money(v){ return 'R$ ' + Number(v).toFixed(2).replace('.', ','); }
 
+function isValidCPF(raw){
+  const cpf = (raw||'').replace(/\D/g,'');
+  if(cpf.length !== 11) return false;
+  if(/^(\d)\1{10}$/.test(cpf)) return false; // tipo 111.111.111-11
+  let sum = 0;
+  for(let i=0;i<9;i++) sum += parseInt(cpf[i]) * (10-i);
+  let d1 = 11 - (sum % 11); if(d1 >= 10) d1 = 0;
+  if(d1 !== parseInt(cpf[9])) return false;
+  sum = 0;
+  for(let i=0;i<10;i++) sum += parseInt(cpf[i]) * (11-i);
+  let d2 = 11 - (sum % 11); if(d2 >= 10) d2 = 0;
+  if(d2 !== parseInt(cpf[10])) return false;
+  return true;
+}
+function isValidEmail(email){
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((email||'').trim());
+}
+function isPlausibleName(name){
+  const parts = (name||'').trim().split(/\s+/);
+  if(parts.length < 2) return false; // precisa de nome e sobrenome
+  return parts.every(p => p.length >= 2 && /^[A-Za-zÀ-ÿ'-]+$/.test(p));
+}
+
 // Gera o código "Pix Copia e Cola" oficial (padrão EMV do Banco Central), com valor travado.
 function stripAccents(s){ return s.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
 function tlv(id, value){ return id + String(value.length).padStart(2,'0') + value; }
@@ -915,7 +938,10 @@ document.getElementById('toPayment').onclick = async () => {
   const email = document.getElementById('ckEmail').value.trim();
   const doc = document.getElementById('ckDoc').value.trim();
   if(!name || !street || !number){ errEl.textContent='Preencha nome, rua e número.'; errEl.style.display='block'; return; }
+  if(!isPlausibleName(name)){ errEl.textContent='Digite seu nome completo (nome e sobrenome, só letras).'; errEl.style.display='block'; return; }
   if(!email || !doc){ errEl.textContent='Preencha e-mail e CPF.'; errEl.style.display='block'; return; }
+  if(!isValidEmail(email)){ errEl.textContent='Esse e-mail não parece válido — confere se está certo.'; errEl.style.display='block'; return; }
+  if(!isValidCPF(doc)){ errEl.textContent='Esse CPF não é válido — confere os números.'; errEl.style.display='block'; return; }
   if(!city || !uf){ errEl.textContent='Preencha cidade e estado.'; errEl.style.display='block'; return; }
   if(!cep){ errEl.textContent='Preencha o CEP.'; errEl.style.display='block'; return; }
 
