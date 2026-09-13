@@ -951,7 +951,39 @@ document.getElementById('toPayment').onclick = async () => {
   goStep(2);
 };
 document.getElementById('backAddr').onclick = () => goStep(1);
-document.getElementById('toConfirm').onclick = () => {
+document.getElementById('toConfirm').onclick = async () => {
+  const btn = document.getElementById('toConfirm');
+  const oldText = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Conferindo estoque...';
+
+  // Checagem ao vivo ANTES de mostrar o código Pix — dinheiro só é pedido depois de confirmar que existe de verdade
+  try {
+    const checkItems = state.cart.map(item=>{
+      const p = state.products.find(x=>x.id===item.productId);
+      return { montink_product_id: p.montinkProductId, montink_color: p.montinkColor, size: item.size };
+    });
+    const checkResp = await fetch(`${SUPABASE_URL}/functions/v1/montink-check-availability`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
+      body: JSON.stringify({ items: checkItems })
+    });
+    const checkResult = await checkResp.json();
+    const unavailable = (checkResult.results||[]).filter(r=>!r.available);
+    if(unavailable.length > 0){
+      alert('Ops! O tamanho ' + unavailable.map(u=>u.size).join(', ') + ' acabou de esgotar na fábrica — ainda bem que a gente conferiu antes de gerar o Pix. Atualizei o catálogo, escolhe outro tamanho, por favor.');
+      state.products = await loadProducts();
+      renderProducts();
+      state.cart = state.cart.filter(item=>{
+        const p = state.products.find(x=>x.id===item.productId);
+        return p && p.sizes.includes(item.size);
+      });
+      renderCart();
+      document.getElementById('checkoutModal').classList.remove('show');
+      btn.disabled = false; btn.textContent = oldText;
+      return;
+    }
+  } catch(e) { /* se a checagem falhar, segue o fluxo pra não travar a venda por instabilidade */ }
+
   const total = cartTotalValue();
   const couponLine = state.appliedCoupon ? `<div class="rowline" style="color:var(--ok);"><span>Cupom ${escapeHtml(state.appliedCoupon.code)}</span><span>-${money(cartSubtotal()-total)}</span></div>` : '';
   document.getElementById('orderSummary').innerHTML = state.cart.map(item=>{
@@ -964,6 +996,7 @@ document.getElementById('toConfirm').onclick = () => {
     : 'sem-chave';
   document.getElementById('deliveryEstimateSpan').textContent = state.deliveryEstimateText || 'até 15 dias úteis';
   document.getElementById('orderOkMsg').style.display='none';
+  btn.disabled = false; btn.textContent = oldText;
   goStep(3);
 };
 document.getElementById('backPay').onclick = () => goStep(2);
