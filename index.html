@@ -751,14 +751,33 @@ function openProductModal(id){
   renderImagesPreview();
   document.getElementById('productModal').classList.add('show');
 }
+function compressImage(dataUrl, maxDim, quality){
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if(w > maxDim || h > maxDim){
+        if(w > h){ h = Math.round(h * maxDim / w); w = maxDim; }
+        else { w = Math.round(w * maxDim / h); h = maxDim; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(dataUrl); // se falhar, usa a original
+    img.src = dataUrl;
+  });
+}
 document.getElementById('pImageFile').onchange = (e) => {
   const files = Array.from(e.target.files);
   let pending = files.length;
   if(pending === 0) return;
   files.forEach(file => {
     const reader = new FileReader();
-    reader.onload = () => {
-      state.tempImages.push(reader.result);
+    reader.onload = async () => {
+      const compressed = await compressImage(reader.result, 1000, 0.75);
+      state.tempImages.push(compressed);
       pending--;
       if(pending === 0) renderImagesPreview();
     };
@@ -1285,10 +1304,11 @@ document.getElementById('reviewPhotoInput').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if(!file) return;
   const reader = new FileReader();
-  reader.onload = () => {
-    reviewState.photo = reader.result;
+  reader.onload = async () => {
+    const compressed = await compressImage(reader.result, 1000, 0.75);
+    reviewState.photo = compressed;
     const preview = document.getElementById('reviewPhotoPreview');
-    preview.src = reader.result;
+    preview.src = compressed;
     preview.style.display = 'block';
   };
   reader.readAsDataURL(file);
