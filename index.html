@@ -167,6 +167,7 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
     <h2>Catálogo</h2>
     <span class="muted" id="adminHint" style="display:none;">Modo admin ativo — você pode editar, remover ou pausar itens.</span>
   </div>
+  <div id="categoryTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;"></div>
   <div id="productGrid" class="grid"><div class="loading">Carregando produtos…</div></div>
 </section>
 
@@ -403,10 +404,17 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
     <div class="field"><label>Descrição curta</label><textarea id="pDesc"></textarea></div>
     <div class="formgrid"><div class="field"><label>Preço (R$)</label><input type="number" id="pPrice" min="0" step="0.01"></div><div class="field"><label>Estoque</label><input type="number" id="pStock" min="0" step="1"></div></div>
     <div class="field">
-      <label>Foto do produto</label>
-      <input type="file" id="pImageFile" accept="image/*">
-      <img id="pImagePreview" class="img-preview">
-      <button type="button" class="btn btn-ghost btn-small" id="removeImageBtn" style="margin-top:8px;display:none;">Remover foto</button>
+      <label>Categoria</label>
+      <select id="pCategory">
+        <option value="zip">Com zíper e capuz</option>
+        <option value="capuz">Só capuz</option>
+        <option value="basico">Sem capuz nem zíper</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Fotos do produto (pode escolher várias de uma vez)</label>
+      <input type="file" id="pImageFile" accept="image/*" multiple>
+      <div id="pImagesPreviewBox" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
     </div>
     <div class="field"><label>Cor de destaque (usada se não houver foto)</label><div class="colorpick" id="colorPick"></div></div>
     <div class="field"><label>Tamanhos disponíveis</label><div class="sizecheck" id="sizeCheckboxes"></div></div>
@@ -434,7 +442,7 @@ const COLORS = ['#c9c7c2','#a9a6a0','#8a8680','#6c6a65','#4a4844','#2a2926'];
 
 let state = {
   products: [], orders: [], settings:{pixKey:'',pixName:'',adminPassword:null},
-  cart: [], isAdmin:false, editingProductId:null, pendingSizeProduct:null, checkoutStep:1, tempImage:undefined,
+  cart: [], isAdmin:false, editingProductId:null, pendingSizeProduct:null, checkoutStep:1, tempImages:[],
   coupons: [], appliedCoupon: null, deliveryEstimateText: null
 };
 
@@ -545,7 +553,7 @@ function renderCouponsAdmin(){
   });
 }
 function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
-function mapProduct(row){ return {id:row.id,name:row.name,desc:row.desc_text||'',price:Number(row.price),stock:row.stock,color:row.color,sizes:row.sizes||[],active:row.active,image:row.image,montinkProductId:row.montink_product_id,montinkColor:row.montink_color}; }
+function mapProduct(row){ return {id:row.id,name:row.name,desc:row.desc_text||'',price:Number(row.price),stock:row.stock,color:row.color,sizes:row.sizes||[],active:row.active,image:row.image,images:row.images&&row.images.length?row.images:(row.image?[row.image]:[]),category:row.category||'capuz',montinkProductId:row.montink_product_id,montinkColor:row.montink_color}; }
 
 async function loadProducts(){
   const {data,error} = await sb.from('products').select('*').order('created_at',{ascending:true});
@@ -580,20 +588,50 @@ async function init(){
   document.getElementById('pixNameInput').value = state.settings.pixName || '';
 }
 
-function swatchBg(p){ return p.image ? '' : `linear-gradient(160deg, ${p.color}, #f3f2ef 160%)`; }
+function swatchBg(p){ return (p.images&&p.images.length) ? '' : `linear-gradient(160deg, ${p.color}, #f3f2ef 160%)`; }
+const productImgIndex = {};
+function cycleProductImage(pid, dir){
+  const p = state.products.find(x=>x.id===pid);
+  if(!p || !p.images || p.images.length < 2) return;
+  const cur = productImgIndex[pid] || 0;
+  const next = (cur + dir + p.images.length) % p.images.length;
+  productImgIndex[pid] = next;
+  const imgEl = document.querySelector(`img[data-pid="${pid}"]`);
+  if(imgEl) imgEl.src = p.images[next];
+}
+
+const CATEGORY_LABELS = { zip: 'Com zíper e capuz', capuz: 'Só capuz', basico: 'Sem capuz nem zíper' };
+let activeCategory = 'zip';
+
+function renderCategoryTabs(){
+  const tabsBox = document.getElementById('categoryTabs');
+  if(!tabsBox) return;
+  tabsBox.innerHTML = Object.entries(CATEGORY_LABELS).map(([key,label]) =>
+    `<button type="button" data-cat="${key}" class="btn ${activeCategory===key?'btn-primary':'btn-ghost'} btn-small">${label}</button>`
+  ).join('');
+  tabsBox.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => { activeCategory = b.dataset.cat; renderProducts(); });
+}
 
 function renderProducts(){
+  renderCategoryTabs();
   const grid = document.getElementById('productGrid');
-  const visible = state.isAdmin ? state.products : state.products.filter(p => p.active);
+  const base = state.isAdmin ? state.products : state.products.filter(p => p.active);
+  const visible = base.filter(p => (p.category||'capuz') === activeCategory);
   grid.innerHTML = '';
-  if(visible.length === 0){ grid.innerHTML = '<div class="empty-box">Nenhum moletom disponível no momento. Volte em breve.</div>'; }
+  if(visible.length === 0){ grid.innerHTML = '<div class="empty-box">Nenhum moletom nessa categoria ainda.</div>'; }
   visible.forEach(p => {
     const card = document.createElement('div');
     card.className = 'card';
     const outOfStock = p.stock <= 0;
+    const imgs = p.images && p.images.length ? p.images : [];
     card.innerHTML = `
       <div class="swatch ${!p.active ? 'inactive':''}" style="background:${swatchBg(p)};">
-        ${p.image ? `<img src="${p.image}" alt="${escapeHtml(p.name)}">` : ''}
+        ${imgs.length ? `<img src="${imgs[productImgIndex[p.id]||0]}" alt="${escapeHtml(p.name)}" data-pid="${p.id}">` : ''}
+        ${imgs.length > 1 ? `
+          <button type="button" data-imgprev="${p.id}" style="position:absolute;left:6px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.85);border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;">‹</button>
+          <button type="button" data-imgnext="${p.id}" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.85);border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;">›</button>
+          <div style="position:absolute;bottom:34px;left:0;right:0;text-align:center;font-size:10px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.6);">${imgs.length} fotos</div>
+        ` : ''}
         <span class="tag" id="tag-${p.id}">${outOfStock ? 'Fora de estoque' : 'Em estoque'}</span>
       </div>
       <div class="card-body">
@@ -625,6 +663,8 @@ function renderProducts(){
   grid.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openProductModal(b.dataset.edit));
   grid.querySelectorAll('[data-del]').forEach(b => b.onclick = () => deleteProduct(b.dataset.del));
   grid.querySelectorAll('[data-toggle]').forEach(b => b.onclick = () => toggleActive(b.dataset.toggle));
+  grid.querySelectorAll('[data-imgprev]').forEach(b => b.onclick = () => cycleProductImage(b.dataset.imgprev, -1));
+  grid.querySelectorAll('[data-imgnext]').forEach(b => b.onclick = () => cycleProductImage(b.dataset.imgnext, 1));
   grid.querySelectorAll('[data-tagpid]').forEach(pill => pill.onclick = () => {
     const tagEl = document.getElementById('tag-' + pill.dataset.tagpid);
     if(!tagEl) return;
@@ -673,16 +713,27 @@ document.getElementById('confirmAdmin').onclick = async () => {
 };
 function showErr(id, msg){ const e=document.getElementById(id); e.textContent=msg; e.style.display='block'; }
 
+function renderImagesPreview(){
+  const box = document.getElementById('pImagesPreviewBox');
+  box.innerHTML = state.tempImages.map((img,idx) => `
+    <div style="position:relative;">
+      <img src="${img}" style="width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">
+      <button type="button" data-rmimg="${idx}" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--danger);color:#fff;border:none;font-size:12px;line-height:1;cursor:pointer;">✕</button>
+    </div>`).join('');
+  box.querySelectorAll('[data-rmimg]').forEach(b=>b.onclick=()=>{
+    state.tempImages.splice(Number(b.dataset.rmimg),1);
+    renderImagesPreview();
+  });
+}
 function openProductModal(id){
   state.editingProductId = id;
-  state.tempImage = undefined;
   document.getElementById('productError').style.display='none';
   document.getElementById('pImageFile').value = '';
   const colorPick = document.getElementById('colorPick');
   colorPick.innerHTML = COLORS.map(c=>`<div class="swab" data-c="${c}" style="background:${c};"></div>`).join('');
   const sizeBox = document.getElementById('sizeCheckboxes');
   sizeBox.innerHTML = SIZES.map(s=>`<label><input type="checkbox" value="${s}"> ${s}</label>`).join('');
-  let p = {name:'',desc:'',price:'',stock:'',color:COLORS[0],sizes:[],active:true,image:null};
+  let p = {name:'',desc:'',price:'',stock:'',color:COLORS[0],sizes:[],active:true,images:[],category:'capuz'};
   if(id){ p = state.products.find(x=>x.id===id); document.getElementById('productModalTitle').textContent = 'Editar moletom'; }
   else { document.getElementById('productModalTitle').textContent = 'Novo moletom'; }
   document.getElementById('pName').value = p.name;
@@ -690,34 +741,29 @@ function openProductModal(id){
   document.getElementById('pPrice').value = p.price;
   document.getElementById('pStock').value = p.stock;
   document.getElementById('pActive').checked = p.active;
+  document.getElementById('pCategory').value = p.category || 'capuz';
   document.getElementById('pMontinkId').value = p.montinkProductId || '';
   document.getElementById('pMontinkColor').value = p.montinkColor || '';
   colorPick.querySelectorAll('.swab').forEach(sw => sw.classList.toggle('sel', sw.dataset.c === p.color));
   colorPick.querySelectorAll('.swab').forEach(sw => sw.onclick = () => { colorPick.querySelectorAll('.swab').forEach(x=>x.classList.remove('sel')); sw.classList.add('sel'); });
   sizeBox.querySelectorAll('input').forEach(cb => cb.checked = (p.sizes||[]).includes(cb.value));
-  const preview = document.getElementById('pImagePreview');
-  const removeBtn = document.getElementById('removeImageBtn');
-  if(p.image){ preview.src = p.image; preview.style.display='block'; removeBtn.style.display='inline-flex'; }
-  else { preview.src=''; preview.style.display='none'; removeBtn.style.display='none'; }
+  state.tempImages = [...(p.images||[])];
+  renderImagesPreview();
   document.getElementById('productModal').classList.add('show');
 }
 document.getElementById('pImageFile').onchange = (e) => {
-  const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    state.tempImage = reader.result;
-    document.getElementById('pImagePreview').src = reader.result;
-    document.getElementById('pImagePreview').style.display='block';
-    document.getElementById('removeImageBtn').style.display='inline-flex';
-  };
-  reader.readAsDataURL(file);
-};
-document.getElementById('removeImageBtn').onclick = () => {
-  state.tempImage = null;
-  document.getElementById('pImageFile').value = '';
-  document.getElementById('pImagePreview').style.display='none';
-  document.getElementById('removeImageBtn').style.display='none';
+  const files = Array.from(e.target.files);
+  let pending = files.length;
+  if(pending === 0) return;
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      state.tempImages.push(reader.result);
+      pending--;
+      if(pending === 0) renderImagesPreview();
+    };
+    reader.readAsDataURL(file);
+  });
 };
 document.getElementById('cancelProduct').onclick = () => document.getElementById('productModal').classList.remove('show');
 document.getElementById('saveProduct').onclick = async () => {
@@ -734,12 +780,11 @@ document.getElementById('saveProduct').onclick = async () => {
   const montinkColor = document.getElementById('pMontinkColor').value.trim();
   if(!montinkProductId || !montinkColor){ showErr('productError','Preencha o ID e a cor da Montink — sem isso, os pedidos desse produto não conseguem ser enviados automaticamente pra fábrica.'); return; }
 
-  const existingImage = state.editingProductId ? state.products.find(p=>p.id===state.editingProductId).image : null;
-  const finalImage = state.tempImage === undefined ? existingImage : state.tempImage;
   const desc = document.getElementById('pDesc').value.trim();
   const active = document.getElementById('pActive').checked;
+  const category = document.getElementById('pCategory').value;
   const color = sel ? sel.dataset.c : COLORS[0];
-  const dbRow = {name, desc_text:desc, price, stock, color, sizes, active, image:finalImage, montink_product_id: montinkProductId, montink_color: montinkColor};
+  const dbRow = {name, desc_text:desc, price, stock, color, sizes, active, images: state.tempImages, image: state.tempImages[0] || null, category, montink_product_id: montinkProductId, montink_color: montinkColor};
 
   if(state.editingProductId){
     const {error} = await sb.from('products').update(dbRow).eq('id', state.editingProductId);
@@ -825,7 +870,7 @@ function renderCart(){
     const p = state.products.find(x=>x.id===item.productId);
     if(!p) return '';
     total += p.price * item.qty;
-    const bg = p.image ? `background-image:url('${p.image}');` : `background:linear-gradient(160deg, ${p.color}, #f3f2ef);`;
+    const bg = (p.images&&p.images.length) ? `background-image:url('${p.images[0]}');` : `background:linear-gradient(160deg, ${p.color}, #f3f2ef);`;
     return `<div class="cart-item">
       <div class="sw-mini" style="${bg}"></div>
       <div class="ci-info"><h4>${escapeHtml(p.name)}</h4><div class="ci-meta">Tam ${item.size} · ${money(p.price)}</div>
