@@ -275,9 +275,10 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
     <p class="sub" id="writeReviewProduct">—</p>
     <div class="field"><label>Escreva um texto (opcional)</label><textarea id="reviewTextInput" placeholder="O que você achou do moletom?"></textarea></div>
     <div class="field">
-      <label>Adicione uma foto (opcional)</label>
-      <input type="file" id="reviewPhotoInput" accept="image/*">
-      <img id="reviewPhotoPreview" class="img-preview" style="max-width:160px;">
+      <label>Adicione fotos (opcional, pode escolher várias)</label>
+      <input type="file" id="reviewPhotoInput" accept="image/*" multiple>
+      <p id="reviewPhotoStatus" style="font-size:11.5px;color:var(--text-muted);margin:4px 0 0;"></p>
+      <div id="reviewPhotosPreviewBox" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
     </div>
     <div class="field">
       <label>Estrelas</label>
@@ -1287,7 +1288,7 @@ document.getElementById('applyCouponBtn').onclick = async () => {
 };
 
 // ===== SISTEMA DE AVALIAÇÕES =====
-let reviewState = { rating: 0, photo: null, orderId: null };
+let reviewState = { rating: 0, photos: [], orderId: null };
 
 function renderStars(){
   const box = document.getElementById('starPicker');
@@ -1300,18 +1301,32 @@ function renderStars(){
     box.appendChild(s);
   }
 }
-document.getElementById('reviewPhotoInput').addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = async () => {
-    const compressed = await compressImage(reader.result, 1000, 0.75);
-    reviewState.photo = compressed;
-    const preview = document.getElementById('reviewPhotoPreview');
-    preview.src = compressed;
-    preview.style.display = 'block';
-  };
-  reader.readAsDataURL(file);
+function renderReviewPhotosPreview(){
+  const box = document.getElementById('reviewPhotosPreviewBox');
+  box.innerHTML = reviewState.photos.map((img,idx) => `
+    <div style="position:relative;">
+      <img src="${img}" style="width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">
+      <button type="button" data-rmreviewimg="${idx}" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--danger);color:#fff;border:none;font-size:12px;line-height:1;cursor:pointer;">✕</button>
+    </div>`).join('');
+  box.querySelectorAll('[data-rmreviewimg]').forEach(b=>b.onclick=()=>{
+    reviewState.photos.splice(Number(b.dataset.rmreviewimg),1);
+    renderReviewPhotosPreview();
+  });
+}
+document.getElementById('reviewPhotoInput').addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files);
+  if(files.length === 0) return;
+  const statusEl = document.getElementById('reviewPhotoStatus');
+  statusEl.textContent = `Preparando ${files.length} foto(s)...`;
+  // processa todas em paralelo, bem mais rápido que uma de cada vez
+  const compressed = await Promise.all(files.map(file => new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = async () => resolve(await compressImage(reader.result, 800, 0.7));
+    reader.readAsDataURL(file);
+  })));
+  reviewState.photos.push(...compressed);
+  statusEl.textContent = '';
+  renderReviewPhotosPreview();
 });
 document.getElementById('submitReviewBtn').onclick = async () => {
   const errEl = document.getElementById('reviewError'); errEl.style.display='none';
@@ -1324,10 +1339,15 @@ document.getElementById('submitReviewBtn').onclick = async () => {
   const {error} = await sb.from('reviews').insert({
     order_id: reviewState.orderId, product_name: productName, customer_name: customerName,
     rating: reviewState.rating, review_text: document.getElementById('reviewTextInput').value.trim() || null,
-    photo: reviewState.photo
+    photos: reviewState.photos, photo: reviewState.photos[0] || null
   });
   btn.disabled = false; btn.textContent = 'Enviar avaliação';
   if(error){ errEl.textContent = 'Erro ao enviar: '+error.message; errEl.style.display='block'; return; }
+  fetch('https://ntfy.sh/orizonwear-vendas-7k3mxq9p', {
+    method: 'POST',
+    headers: { 'Title': 'Nova avaliação na Orizon Wear!', 'Priority': 'default', 'Tags': 'star' },
+    body: `${customerName} avaliou ${productName} com ${reviewState.rating}★`
+  }).catch(()=>{});
   document.getElementById('reviewOk').textContent = 'Avaliação enviada! Muito obrigado 🙏';
   document.getElementById('reviewOk').style.display='block';
   window.history.replaceState({}, '', window.location.pathname);
@@ -1340,9 +1360,10 @@ async function checkReviewLink(){
   if(!orderId) return;
   const {data: order, error} = await sb.from('orders').select('id, items, delivered_notified_at').eq('id', orderId).single();
   if(error || !order || !order.delivered_notified_at){ return; }
-  reviewState = { rating:0, photo:null, orderId: order.id };
+  reviewState = { rating:0, photos:[], orderId: order.id };
   document.getElementById('writeReviewProduct').textContent = (order.items||[]).map(i=>`${i.qty}x ${i.name} (${i.size})`).join(', ');
-  document.getElementById('reviewPhotoPreview').style.display='none';
+  document.getElementById('reviewPhotosPreviewBox').innerHTML='';
+  document.getElementById('reviewPhotoStatus').textContent='';
   document.getElementById('reviewTextInput').value='';
   document.getElementById('reviewOk').style.display='none';
   renderStars();
@@ -1371,7 +1392,7 @@ function renderReviews(reviews){
       </div>
       <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">${escapeHtml(r.product_name)}</div>
       ${r.review_text ? `<p style="font-size:13px;margin:0 0 8px;">${escapeHtml(r.review_text)}</p>` : ''}
-      ${r.photo ? `<img src="${r.photo}" style="max-width:140px;border-radius:8px;">` : ''}
+      ${r.photos && r.photos.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;">${r.photos.map(ph=>`<img src="${ph}" style="width:100px;height:100px;object-fit:cover;border-radius:8px;">`).join('')}</div>` : (r.photo ? `<img src="${r.photo}" style="max-width:140px;border-radius:8px;">` : '')}
     </div>
   `).join('');
 }
