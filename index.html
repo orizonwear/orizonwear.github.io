@@ -1165,7 +1165,7 @@ document.getElementById('placeOrder').onclick = async () => {
   fetch('https://ntfy.sh/orizonwear-vendas-7k3mxq9p', {
     method: 'POST',
     headers: { 'Title': 'Novo pedido na Orizon Wear!', 'Priority': 'urgent', 'Tags': 'bell' },
-    body: `${itemsSummary} — ${money(total)} — ${address.name}\n\n💡 Lembrete: na hora de pagar na Montink, coloca R$2,09 a mais no saldo pra cobrir o flyer de agradecimento.`
+    body: `${itemsSummary} — ${money(total)} — ${address.name}\n\n💡 Lembrete: na hora de pagar na Montink, coloca R$1,98 a mais no saldo pra cobrir o flyer de agradecimento.`
   }).catch(()=>{});
 
   for(const item of state.cart){
