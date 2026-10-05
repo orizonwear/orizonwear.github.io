@@ -300,16 +300,18 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
   <div class="modal">
     <h3>Autoavaliação</h3>
     <p class="sub" id="writeReviewProduct">—</p>
-    <div class="field"><label>Escreva um texto (opcional)</label><textarea id="reviewTextInput" placeholder="O que você achou do moletom?"></textarea></div>
-    <div class="field">
-      <label>Adicione fotos (opcional, pode escolher várias)</label>
-      <input type="file" id="reviewPhotoInput" accept="image/*" multiple>
-      <p id="reviewPhotoStatus" style="font-size:11.5px;color:var(--text-muted);margin:4px 0 0;"></p>
-      <div id="reviewPhotosPreviewBox" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
-    </div>
-    <div class="field">
-      <label>Estrelas</label>
-      <div id="starPicker" style="font-size:28px;letter-spacing:4px;cursor:pointer;">☆☆☆☆☆</div>
+    <div id="reviewFormFields">
+      <div class="field"><label>Escreva um texto (opcional)</label><textarea id="reviewTextInput" placeholder="O que você achou do moletom?"></textarea></div>
+      <div class="field">
+        <label>Adicione fotos (opcional, pode escolher várias)</label>
+        <input type="file" id="reviewPhotoInput" accept="image/*" multiple>
+        <p id="reviewPhotoStatus" style="font-size:11.5px;color:var(--text-muted);margin:4px 0 0;"></p>
+        <div id="reviewPhotosPreviewBox" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
+      </div>
+      <div class="field">
+        <label>Estrelas</label>
+        <div id="starPicker" style="font-size:28px;letter-spacing:4px;cursor:pointer;">☆☆☆☆☆</div>
+      </div>
     </div>
     <p class="error-text" id="reviewError" style="display:none;"></p>
     <p class="ok-text" id="reviewOk" style="display:none;"></p>
@@ -1401,6 +1403,21 @@ async function checkReviewLink(){
   if(!orderId) return;
   const {data: order, error} = await sb.from('orders').select('id, items, delivered_notified_at').eq('id', orderId).single();
   if(error || !order || !order.delivered_notified_at){ return; }
+
+  // só deixa avaliar uma vez por pedido — já avaliou, não abre de novo
+  const {data: existingReview} = await sb.from('reviews').select('id').eq('order_id', orderId).maybeSingle();
+  if(existingReview){
+    document.getElementById('writeReviewProduct').textContent = (order.items||[]).map(i=>`${i.qty}x ${i.name} (${i.size})`).join(', ');
+    document.getElementById('reviewFormFields').style.display = 'none';
+    document.getElementById('submitReviewBtn').style.display = 'none';
+    document.getElementById('reviewOk').textContent = 'Você já avaliou esse pedido — obrigado! 🙏 Pra avaliar de novo, é só fazer uma nova compra.';
+    document.getElementById('reviewOk').style.display = 'block';
+    document.getElementById('writeReviewModal').classList.add('show');
+    return;
+  }
+
+  document.getElementById('reviewFormFields').style.display = 'block';
+  document.getElementById('submitReviewBtn').style.display = 'block';
   reviewState = { rating:0, photos:[], orderId: order.id };
   document.getElementById('writeReviewProduct').textContent = (order.items||[]).map(i=>`${i.qty}x ${i.name} (${i.size})`).join(', ');
   document.getElementById('reviewPhotosPreviewBox').innerHTML='';
