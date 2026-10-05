@@ -1426,16 +1426,60 @@ function renderReviews(reviews){
   const avg = (reviews.reduce((s,r)=>s+r.rating,0) / reviews.length).toFixed(1);
   summary.textContent = `${'★'.repeat(Math.round(avg))}${'☆'.repeat(5-Math.round(avg))}  ${avg} de 5 — ${reviews.length} avaliação(ões)`;
   box.innerHTML = reviews.map(r => `
-    <div style="border-bottom:1px solid var(--border);padding-bottom:12px;">
+    <div style="border-bottom:1px solid var(--border);padding-bottom:12px;" id="review-${r.id}">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <strong style="font-size:13.5px;">${escapeHtml(r.customer_name||'Cliente')}</strong>
         <span style="color:var(--text);font-size:13px;">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
       </div>
       <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">${escapeHtml(r.product_name)}</div>
-      ${r.review_text ? `<p style="font-size:13px;margin:0 0 8px;">${escapeHtml(r.review_text)}</p>` : ''}
-      ${r.photos && r.photos.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;">${r.photos.map(ph=>`<img src="${ph}" style="width:100px;height:100px;object-fit:cover;border-radius:8px;">`).join('')}</div>` : (r.photo ? `<img src="${r.photo}" style="max-width:140px;border-radius:8px;">` : '')}
+      <div class="review-view">
+        ${r.review_text ? `<p style="font-size:13px;margin:0 0 8px;">${escapeHtml(r.review_text)}</p>` : ''}
+        ${r.photos && r.photos.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;">${r.photos.map(ph=>`<img src="${ph}" style="width:100px;height:100px;object-fit:cover;border-radius:8px;">`).join('')}</div>` : (r.photo ? `<img src="${r.photo}" style="max-width:140px;border-radius:8px;">` : '')}
+      </div>
+      ${state.isAdmin ? `
+      <div class="admin-actions" style="margin-top:8px;">
+        <button class="btn btn-ghost btn-small" data-editreview="${r.id}">Editar</button>
+        <button class="btn btn-danger btn-small" data-delreview="${r.id}">Excluir</button>
+      </div>` : ''}
     </div>
   `).join('');
+  if(state.isAdmin){
+    box.querySelectorAll('[data-delreview]').forEach(b=>b.onclick=async()=>{
+      if(!confirm('Excluir essa avaliação permanentemente?')) return;
+      await sb.from('reviews').delete().eq('id', b.dataset.delreview);
+      const fresh = await loadReviews();
+      renderReviews(fresh);
+    });
+    box.querySelectorAll('[data-editreview]').forEach(b=>b.onclick=()=>{
+      const r = reviews.find(x=>x.id===b.dataset.editreview);
+      const container = document.getElementById(`review-${r.id}`);
+      const viewDiv = container.querySelector('.review-view');
+      let editRating = r.rating;
+      const starsHtml = () => Array.from({length:5}, (_,i)=> i<editRating ? '★' : '☆').map((s,i)=>`<span data-editstar="${i+1}" style="cursor:pointer;">${s}</span>`).join('');
+      viewDiv.innerHTML = `
+        <div style="font-size:20px;letter-spacing:3px;margin-bottom:8px;" id="editstars-${r.id}">${starsHtml()}</div>
+        <textarea id="edittext-${r.id}" style="width:100%;">${r.review_text||''}</textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn btn-primary btn-small" data-saveedit="${r.id}">Salvar</button>
+          <button class="btn btn-ghost btn-small" data-canceledit="${r.id}">Cancelar</button>
+        </div>`;
+      document.getElementById(`editstars-${r.id}`).querySelectorAll('[data-editstar]').forEach(s=>s.onclick=()=>{
+        editRating = Number(s.dataset.editstar);
+        document.getElementById(`editstars-${r.id}`).innerHTML = starsHtml();
+        document.getElementById(`editstars-${r.id}`).querySelectorAll('[data-editstar]').forEach(s2=>s2.onclick=s.onclick);
+      });
+      container.querySelector('[data-saveedit]').onclick = async () => {
+        const newText = document.getElementById(`edittext-${r.id}`).value.trim();
+        await sb.from('reviews').update({ rating: editRating, review_text: newText || null }).eq('id', r.id);
+        const fresh = await loadReviews();
+        renderReviews(fresh);
+      };
+      container.querySelector('[data-canceledit]').onclick = async () => {
+        const fresh = await loadReviews();
+        renderReviews(fresh);
+      };
+    });
+  }
 }
 document.getElementById('openReviewsBtn').onclick = async () => {
   document.getElementById('reviewsModal').classList.add('show');
