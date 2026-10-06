@@ -229,6 +229,15 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
   </div>
 
   <div class="add-card" style="margin-bottom:24px;">
+    <h3>Novidades por e-mail</h3>
+    <p class="notice" id="subscribersCount">Carregando inscritos...</p>
+    <div class="field"><label>Assunto</label><input type="text" id="newsletterSubject" placeholder="ex: Chegou o moletom novo!"></div>
+    <div class="field"><label>Mensagem</label><textarea id="newsletterMessage" placeholder="Conta a novidade aqui..."></textarea></div>
+    <button class="btn btn-primary btn-small" id="sendNewsletterBtn">Enviar pra lista</button>
+    <p class="error-text" id="newsletterStatus" style="display:none;"></p>
+  </div>
+
+  <div class="add-card" style="margin-bottom:24px;">
     <h3>Cupons de desconto</h3>
     <div class="formgrid">
       <div class="field"><label>Código</label><input type="text" id="couponCodeInput" placeholder="ex: AMIGO10" style="text-transform:uppercase;"></div>
@@ -404,6 +413,7 @@ footer{border-top:1px solid var(--border);padding:26px 0;color:var(--text-muted)
         <div class="field"><label>CPF</label><input type="text" id="ckDoc" placeholder="000.000.000-00"></div>
       </div>
       <div class="field checkrow"><input type="checkbox" id="ckSaveData" style="width:auto;"><label for="ckSaveData" style="margin:0;">Salvar meus dados pra próxima compra</label></div>
+      <div class="field checkrow"><input type="checkbox" id="ckNewsletter" style="width:auto;"><label for="ckNewsletter" style="margin:0;">Quero receber novidades e lançamentos por e-mail (opcional)</label></div>
       <p class="error-text" id="ckAddrError" style="display:none;"></p>
       <button class="btn btn-primary" id="toPayment" style="width:100%;margin-top:6px;">Continuar pro pagamento</button>
     </div>
@@ -777,6 +787,8 @@ document.getElementById('confirmAdmin').onclick = async () => {
   document.getElementById('adminModal').classList.remove('show');
   state.coupons = await loadCoupons();
   renderProducts(); renderOrders(); renderCouponsAdmin();
+  const {count} = await sb.from('subscribers').select('*', {count:'exact', head:true});
+  document.getElementById('subscribersCount').textContent = `${count||0} pessoa(s) inscrita(s) pra receber novidades.`;
 };
 function showErr(id, msg){ const e=document.getElementById(id); e.textContent=msg; e.style.display='block'; }
 
@@ -928,8 +940,23 @@ async function openSizeModal(productId){
   document.getElementById('sizeOptions').innerHTML = SIZES.map(s=>{
     const avail = liveSizes.includes(s);
     if(avail) return `<label><input type="radio" name="szpick" value="${s}"> ${s}</label>`;
-    return `<label style="color:var(--danger);border-color:var(--danger);opacity:.6;cursor:not-allowed;"><input type="radio" name="szpick" value="${s}" disabled> ${s} (indisponível)</label>`;
+    return `<div style="display:flex;align-items:center;gap:8px;">
+      <label style="color:var(--danger);border-color:var(--danger);opacity:.6;cursor:not-allowed;flex:1;"><input type="radio" name="szpick" value="${s}" disabled> ${s} (indisponível)</label>
+      <button type="button" class="btn btn-ghost btn-small" data-notifyme="${s}">Avise-me</button>
+    </div>`;
   }).join('');
+  document.querySelectorAll('[data-notifyme]').forEach(b => b.onclick = () => openNotifyMeForm(productId, b.dataset.notifyme));
+}
+
+function openNotifyMeForm(productId, size){
+  const savedEmail = (() => { try { return JSON.parse(localStorage.getItem('orizonWearSavedAddress')||'{}').email || ''; } catch(e){ return ''; } })();
+  const email = prompt(`Avisar quando o tamanho ${size} voltar ao estoque. Digite seu e-mail:`, savedEmail);
+  if(!email) return;
+  if(!isValidEmail(email)){ alert('Esse e-mail não parece válido.'); return; }
+  sb.from('restock_requests').insert({ product_id: productId, size, email: email.trim() }).then(({error}) => {
+    if(error){ alert('Não consegui registrar o aviso, tenta de novo.'); return; }
+    alert(`Combinado! Avisamos ${email} assim que o tamanho ${size} voltar ao estoque.`);
+  });
 }
 document.getElementById('cancelSize').onclick = () => document.getElementById('sizeModal').classList.remove('show');
 document.getElementById('confirmSize').onclick = () => {
@@ -1227,6 +1254,10 @@ document.getElementById('placeOrder').onclick = async () => {
   const {data: insertedOrder, error} = await sb.from('orders').insert({items, total, method:'pix', address, status:'pendente', coupon_code: state.appliedCoupon ? state.appliedCoupon.code : null}).select('id').single();
   if(error){ alert('Erro ao registrar pedido: '+error.message); placeBtn.disabled = false; placeBtn.textContent = oldBtnText; return; }
 
+  if(document.getElementById('ckNewsletter').checked && address.email){
+    await sb.from('subscribers').upsert({ email: address.email, name: address.name }).select();
+  }
+
   const itemsSummary = items.map(i => `${i.qty}x ${i.name} (${i.size})`).join(', ');
   fetch('https://ntfy.sh/orizonwear-vendas-7k3mxq9p', {
     method: 'POST',
@@ -1332,6 +1363,34 @@ document.getElementById('saveSettingsBtn').onclick = async () => {
   state.settings.pixKey = pixKey; state.settings.pixName = pixName;
   const b = document.getElementById('saveSettingsBtn'); const old = b.textContent; b.textContent='Salvo!';
   setTimeout(()=>b.textContent=old, 1400);
+};
+
+document.getElementById('sendNewsletterBtn').onclick = async () => {
+  const statusEl = document.getElementById('newsletterStatus'); statusEl.style.display='none';
+  const subject = document.getElementById('newsletterSubject').value.trim();
+  const message = document.getElementById('newsletterMessage').value.trim();
+  if(!subject || !message){ statusEl.textContent='Preencha assunto e mensagem.'; statusEl.style.display='block'; return; }
+  if(!confirm('Mandar essa mensagem pra todos os inscritos agora?')) return;
+  const btn = document.getElementById('sendNewsletterBtn');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/functions/v1/send-newsletter`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
+      body: JSON.stringify({ subject, message })
+    });
+    const result = await resp.json();
+    statusEl.style.color = 'var(--ok)';
+    statusEl.textContent = `Enviado pra ${result.sent} de ${result.total} inscrito(s).`;
+    statusEl.style.display='block';
+    document.getElementById('newsletterSubject').value='';
+    document.getElementById('newsletterMessage').value='';
+  } catch(e) {
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = 'Erro ao enviar. Tenta de novo.';
+    statusEl.style.display='block';
+  }
+  btn.disabled = false; btn.textContent = 'Enviar pra lista';
 };
 
 document.getElementById('addCouponBtn').onclick = async () => {
