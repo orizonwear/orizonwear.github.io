@@ -1304,6 +1304,7 @@ document.getElementById('clearSavedDataBtn').onclick = () => {
 document.getElementById('goCheckout').onclick = () => {
   if(state.cart.length===0) return;
   closeCartFn(); goStep(1);
+  { const pb = document.getElementById('placeOrder'); if(pb && pb.dataset.oldText){ pb.textContent = pb.dataset.oldText; delete pb.dataset.oldText; } if(pb) pb.disabled = false; orderSending = false; }
   fillSavedData();
   document.getElementById('checkoutModal').classList.add('show');
 };
@@ -1420,8 +1421,12 @@ document.getElementById('copyPix').onclick = () => {
   const b = document.getElementById('copyPix'); const old = b.textContent; b.textContent='Copiado!';
   setTimeout(()=>b.textContent=old,1500);
 };
+let orderSending = false;
 document.getElementById('placeOrder').onclick = async () => {
   const placeBtn = document.getElementById('placeOrder');
+  // trava: só deixa registrar UMA vez (evita cliques repetidos e pedidos vazios/R$0)
+  if(orderSending || placeBtn.disabled || state.cart.length === 0) return;
+  orderSending = true;
   const oldBtnText = placeBtn.textContent;
   placeBtn.disabled = true; placeBtn.textContent = 'Conferindo estoque...';
 
@@ -1448,7 +1453,7 @@ document.getElementById('placeOrder').onclick = async () => {
       });
       renderCart();
       document.getElementById('checkoutModal').classList.remove('show');
-      placeBtn.disabled = false; placeBtn.textContent = oldBtnText;
+      placeBtn.disabled = false; placeBtn.textContent = oldBtnText; orderSending = false;
       return;
     }
   } catch(e) {
@@ -1475,13 +1480,13 @@ document.getElementById('placeOrder').onclick = async () => {
       .ilike('address->>email', address.email);
     if((count||0) >= state.appliedCoupon.max_uses_per_person){
       alert(`Esse e-mail já usou o cupom ${state.appliedCoupon.code} o máximo de vezes permitido (${state.appliedCoupon.max_uses_per_person}x). Remove o cupom ou usa outro.`);
-      placeBtn.disabled = false; placeBtn.textContent = oldBtnText;
+      placeBtn.disabled = false; placeBtn.textContent = oldBtnText; orderSending = false;
       return;
     }
   }
 
   const {data: insertedOrder, error} = await sb.from('orders').insert({items, total, method:'pix', address, status:'pendente', coupon_code: state.appliedCoupon ? state.appliedCoupon.code : null}).select('id').single();
-  if(error){ alert('Erro ao registrar pedido: '+error.message); placeBtn.disabled = false; placeBtn.textContent = oldBtnText; return; }
+  if(error){ alert('Erro ao registrar pedido: '+error.message); placeBtn.disabled = false; placeBtn.textContent = oldBtnText; orderSending = false; return; }
 
   if(document.getElementById('ckNewsletter').checked && address.email){
     await sb.from('subscribers').upsert({ email: address.email, name: address.name }).select();
@@ -1511,7 +1516,10 @@ document.getElementById('placeOrder').onclick = async () => {
   const orderNumber = insertedOrder ? insertedOrder.id.slice(0,8).toUpperCase() : '';
   document.getElementById('orderOkMsg').innerHTML = `${orderNumber ? `<strong style="font-size:16px;">Seu pedido: #${orderNumber}</strong><br><br>` : ''}Pedido registrado! Assim que o pagamento for confirmado, você recebe um e-mail com o código do pedido no endereço que você preencheu — é só abrir o app de e-mail depois.<br><br><strong>Muito obrigado por comprar com a gente! 🙏</strong><br><br>📧 <strong>Confira seu e-mail</strong> pra acompanhar o rastreio, a transportadora e o prazo estimado de entrega — a gente te avisa por lá em cada etapa, inclusive quando o pedido chegar até você.`;
 
-  placeBtn.disabled = false; placeBtn.textContent = oldBtnText;
+  // sucesso: botão fica travado (só reabre quando começar uma nova compra)
+  placeBtn.disabled = true; placeBtn.textContent = 'Pedido enviado ✓';
+  placeBtn.dataset.oldText = oldBtnText;
+  orderSending = false;
 };
 
 function renderOrders(){
