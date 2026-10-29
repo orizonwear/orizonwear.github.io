@@ -385,9 +385,123 @@ footer::before{content:'ORIZON WEAR';display:block;font-family:'Libre Caslon Tex
 .logo .sub{font-family:'DM Sans',sans-serif!important;font-style:normal;font-size:14px;font-weight:600;letter-spacing:.08em;text-transform:none;color:var(--text-muted);}
 footer::before{font-family:'Libre Caslon Text',Georgia,serif!important;font-style:normal!important;font-weight:700;letter-spacing:.06em;font-size:28px;}
 @media(max-width:600px){.logo .lg-o{font-size:22px}}
+
+/* ===== PAUSA DA LOJA ===== */
+html.chk body{visibility:hidden}
+html.is-paused,html.is-paused body{overflow:hidden!important;background:#0a0a0a!important}
+html.is-paused body>*:not(#pauseOverlay){display:none!important}
+#pauseOverlay{display:none}
+html.is-paused #pauseOverlay{display:flex!important;visibility:visible!important}
+#pauseOverlay{position:fixed;inset:0;z-index:2147483000;overflow-y:auto;background:#0a0a0a;color:#fff;flex-direction:column;font-family:'DM Sans',sans-serif;isolation:isolate}
+#pauseOverlay *{box-sizing:border-box}
+#pauseOverlay::before{content:'';position:fixed;inset:0;z-index:-2;background:radial-gradient(ellipse 60% 70% at var(--mx,70%) var(--my,40%),rgba(255,255,255,.14),transparent 60%)}
+#pauseOverlay .pz-head{padding:28px 32px;display:flex;align-items:baseline;gap:8px}
+#pauseOverlay .pz-lg{font-family:'Libre Caslon Text',Georgia,serif;font-weight:700;font-size:25px;letter-spacing:.01em}
+#pauseOverlay .pz-lgs{font-size:14px;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,.55)}
+#pauseOverlay .pz-main{flex:1;display:flex;align-items:center;padding:20px 32px 60px;position:relative}
+#pauseOverlay .pz-orb{position:absolute;right:10%;top:50%;width:300px;height:300px;margin-top:-150px;border-radius:50%;z-index:-1;background:radial-gradient(circle at 32% 28%,#fff 0%,#e9e9e9 18%,#9a9a9a 52%,#2a2a2a 80%,#0a0a0a 100%);box-shadow:0 0 90px rgba(255,255,255,.22),inset -20px -30px 60px rgba(0,0,0,.55);animation:pzfloat 7s ease-in-out infinite}
+@keyframes pzfloat{50%{transform:translateY(-16px)}}
+#pauseOverlay .pz-box{max-width:640px}
+#pauseOverlay .pz-eyebrow{font-size:14px;color:rgba(255,255,255,.7);display:flex;align-items:center;gap:12px;margin-bottom:26px}
+#pauseOverlay .pz-eyebrow::before{content:'';width:28px;height:1px;background:#fff}
+#pauseOverlay h1{font-family:'DM Sans',sans-serif;font-weight:600;font-size:clamp(44px,8vw,92px);line-height:1;letter-spacing:-0.045em;color:#fff;margin:0}
+#pauseOverlay h1 span{display:inline-block;opacity:0;transform:translateY(40px) rotate(2deg);animation:pzrise .9s cubic-bezier(.2,.8,.2,1) forwards}
+#pauseOverlay h1 span:nth-child(2){animation-delay:.15s}#pauseOverlay h1 span:nth-child(3){animation-delay:.3s}
+#pauseOverlay h1 .pz-l{font-weight:300}
+@keyframes pzrise{to{opacity:1;transform:none}}
+@keyframes pzfade{to{opacity:1}}
+#pauseOverlay .pz-lead{margin:28px 0 0;font-size:16.5px;line-height:1.65;color:rgba(255,255,255,.68);max-width:500px;opacity:0;animation:pzfade 1s ease .6s forwards}
+#pauseOverlay form{margin-top:34px;display:flex;gap:10px;flex-wrap:wrap;max-width:500px;opacity:0;animation:pzfade 1s ease .8s forwards}
+#pauseOverlay input{flex:1;width:auto;min-width:220px;background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:999px;padding:14px 20px;font-size:15px;font-family:inherit;box-shadow:none}
+#pauseOverlay input::placeholder{color:rgba(255,255,255,.45)}
+#pauseOverlay input:focus{outline:none;border-color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.12)}
+#pauseOverlay button{position:relative;overflow:hidden;border:none;background:#fff;color:#0a0a0a;border-radius:999px;padding:14px 26px;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer;transition:transform .15s,background .2s}
+#pauseOverlay button:hover{background:#d9d9d9}#pauseOverlay button:active{transform:scale(.96)}#pauseOverlay button:disabled{opacity:.5;cursor:default}
+#pauseOverlay button.pz-ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4)}
+#pauseOverlay button.pz-ghost:hover{background:rgba(255,255,255,.12)}
+#pauseOverlay .pz-msg{width:100%;font-size:13.5px;min-height:20px;color:rgba(255,255,255,.7)}
+#pauseOverlay .pz-msg.ok{color:#fff}#pauseOverlay .pz-msg.err{color:#ff9d94}
+#pauseOverlay .pz-hp{position:absolute;left:-9999px;opacity:0}
+#pauseOverlay .pz-social{margin-top:34px;display:flex;gap:22px;font-size:14px;opacity:0;animation:pzfade 1s ease 1s forwards}
+#pauseOverlay .pz-social a{color:rgba(255,255,255,.75);text-decoration:none;border-bottom:1px solid rgba(255,255,255,.3);padding-bottom:2px}
+#pauseOverlay .pz-social a:hover{color:#fff;border-color:#fff}
+#pauseOverlay .pz-foot{padding:24px 32px;font-size:12.5px;color:rgba(255,255,255,.4);border-top:1px solid rgba(255,255,255,.1);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#pauseOverlay .pz-foot button{background:none;color:rgba(255,255,255,.55);border:none;padding:0;font-size:12.5px;font-weight:400;text-decoration:underline;border-radius:0}
+#pauseOverlay .pz-foot button:hover{background:none;color:#fff}
+#pauseOverlay .pz-owner{position:absolute;inset:0;z-index:5;background:#0a0a0a;display:none;align-items:center;justify-content:center;padding:24px}
+#pauseOverlay .pz-owner.show{display:flex}
+#pauseOverlay .pz-card{width:100%;max-width:400px}
+#pauseOverlay .pz-card h2{font-family:'DM Sans',sans-serif;font-weight:600;font-size:30px;letter-spacing:-0.03em;color:#fff;margin:0 0 10px}
+#pauseOverlay .pz-card p{color:rgba(255,255,255,.65);font-size:15px;line-height:1.6;margin:0 0 22px}
+#pauseOverlay .pz-card input{width:100%;margin-bottom:12px}
+#pauseOverlay .pz-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+@media(max-width:700px){#pauseOverlay .pz-head,#pauseOverlay .pz-main,#pauseOverlay .pz-foot{padding-left:20px;padding-right:20px}#pauseOverlay .pz-orb{width:170px;height:170px;margin-top:-85px;right:-60px;top:72%;opacity:.4}}
+@media(prefers-reduced-motion:reduce){#pauseOverlay .pz-orb{animation:none}#pauseOverlay h1 span,#pauseOverlay .pz-lead,#pauseOverlay form,#pauseOverlay .pz-social{animation:none;opacity:1;transform:none}}
 </style>
+<script>
+(function(){
+  var de=document.documentElement; de.classList.add('chk');
+  var done=false; function fin(p){ if(done) return; done=true; de.classList.remove('chk'); if(p) de.classList.add('is-paused'); }
+  setTimeout(function(){fin(false)},2500);
+  try{
+    fetch('https://gedwqsghbrbflupjrvgp.supabase.co/rest/v1/site_status?select=paused&id=eq.1',{cache:'no-store',headers:{apikey:'sb_publishable_GHgwknqQ5YYDcqX3pPjirA_EhvvbgsK',Authorization:'Bearer sb_publishable_GHgwknqQ5YYDcqX3pPjirA_EhvvbgsK'}})
+      .then(function(r){return r.ok?r.json():[]})
+      .then(function(d){fin(!!(d&&d[0]&&d[0].paused))})
+      .catch(function(){fin(false)});
+  }catch(e){fin(false)}
+})();
+</script>
 </head>
 <body>
+
+<div id="pauseOverlay" role="dialog" aria-label="Loja em pausa temporária">
+  <div class="pz-head"><span class="pz-lg">ORIZON</span><span class="pz-lgs">WEAR</span></div>
+  <div class="pz-main">
+    <div class="pz-orb" aria-hidden="true"></div>
+    <div class="pz-box">
+      <div class="pz-eyebrow">Pausa temporária</div>
+      <h1><span>Voltamos</span> <span class="pz-l">em</span> <span>breve.</span></h1>
+      <p class="pz-lead">A Orizon Wear está em pausa temporária e voltará com novidades. Agradecemos a todos que já vestiram a marca. Deixe seu e-mail e avisaremos assim que a loja reabrir.</p>
+      <form id="pzForm" novalidate>
+        <input type="email" id="pzEmail" placeholder="Seu melhor e-mail" autocomplete="email" aria-label="Seu e-mail">
+        <input type="text" id="pzHp" class="pz-hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+        <button type="submit" id="pzBtn">Avise-me</button>
+        <div class="pz-msg" id="pzMsg" role="status"></div>
+      </form>
+      <div class="pz-social">
+        <a href="https://www.instagram.com/orizonwear" target="_blank" rel="noopener">Instagram</a>
+        <a href="https://www.tiktok.com/@orizonwear" target="_blank" rel="noopener">TikTok</a>
+      </div>
+    </div>
+  </div>
+  <div class="pz-foot"><span>© Orizon Wear · Moletons unissex</span><button type="button" id="pzOwnerLink">Você é o dono da loja? Clique aqui</button></div>
+
+  <div class="pz-owner" id="pzOwner">
+    <div class="pz-card" id="pzStepPass">
+      <h2>Área do dono</h2>
+      <p>Digite a senha do painel administrativo para continuar.</p>
+      <input type="password" id="pzPass" placeholder="Senha" autocomplete="current-password" aria-label="Senha">
+      <div class="pz-msg" id="pzPassMsg" role="status"></div>
+      <div class="pz-row"><button type="button" class="pz-ghost" id="pzPassCancel">Cancelar</button><button type="button" id="pzPassOk">Continuar</button></div>
+    </div>
+    <div class="pz-card" id="pzStepConfirm" style="display:none;">
+      <h2>Colocar a loja de volta no ar?</h2>
+      <p>Ao continuar, a loja volta a ficar disponível para todos os visitantes imediatamente.</p>
+      <div class="pz-msg" id="pzConfMsg" role="status"></div>
+      <div class="pz-row"><button type="button" class="pz-ghost" id="pzConfCancel">Cancelar</button><button type="button" id="pzConfOk">Continuar</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-back" id="pauseAdminModal">
+  <div class="modal">
+    <h3>Pausar a loja?</h3>
+    <p class="sub">Todos os visitantes passarão a ver a página "Voltamos em breve" no lugar da loja, até você reabrir. Pedidos já feitos e e-mails automáticos não são afetados.</p>
+    <div class="field"><label>Confirme a senha do painel</label><input type="password" id="pauseAdminPass" autocomplete="current-password"></div>
+    <div class="error-text" id="pauseAdminErr" style="display:none;"></div>
+    <div style="display:flex;gap:10px;margin-top:14px;"><button class="btn btn-ghost" id="pauseAdminCancel" type="button">Cancelar</button><button class="btn btn-primary" id="pauseAdminOk" type="button" style="flex:1;">Pausar a loja</button></div>
+  </div>
+</div>
 
 <header class="site">
   <div class="wrap headbar">
@@ -447,6 +561,11 @@ footer::before{font-family:'Libre Caslon Text',Georgia,serif!important;font-styl
 
 <section class="wrap" id="adminSettingsSection" style="display:none;">
   <div class="section-head"><h2>Painel do dono</h2></div>
+  <div class="add-card" style="margin-bottom:24px;">
+    <h3>Pausar a loja</h3>
+    <p class="notice" style="margin-top:0;">Mostra a página "Voltamos em breve" para todos os visitantes. Para reabrir, abra o site, toque em "Você é o dono da loja? Clique aqui" no rodapé da página de pausa e digite a senha.</p>
+    <button class="btn btn-ghost btn-small" id="btnPauseSite" type="button" style="margin-top:12px;">Pausar a loja</button>
+  </div>
   <div class="add-card" style="margin-bottom:24px;">
     <h3>Chave Pix e conta de recebimento</h3>
     <div class="formgrid">
@@ -1990,6 +2109,81 @@ document.addEventListener('click',function(e){
  else if(!b.disabled){b.classList.remove('done');void b.offsetWidth;b.classList.add('done');}
 });
 }catch(e){}})();
+</script>
+<script>
+(function(){
+var URL_='https://gedwqsghbrbflupjrvgp.supabase.co', KEY='sb_publishable_GHgwknqQ5YYDcqX3pPjirA_EhvvbgsK';
+function $(id){return document.getElementById(id);}
+function call(payload){
+  return fetch(URL_+'/functions/v1/site-pause',{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY},body:JSON.stringify(payload)})
+    .then(function(r){return r.json().catch(function(){return {ok:false,error:'bad_response'}}).then(function(j){j.status=r.status;return j;});});
+}
+/* luz que acompanha o mouse */
+document.addEventListener('pointermove',function(e){var o=$('pauseOverlay');if(!o)return;o.style.setProperty('--mx',(e.clientX/innerWidth*100)+'%');o.style.setProperty('--my',(e.clientY/innerHeight*100)+'%');});
+
+/* e-mail "Avise-me" */
+var f=$('pzForm');
+f.addEventListener('submit',function(ev){
+  ev.preventDefault();
+  var msg=$('pzMsg'),bt=$('pzBtn'),em=$('pzEmail');
+  function show(t,c){msg.textContent=t;msg.className='pz-msg '+(c||'');}
+  if($('pzHp').value) return;
+  var v=em.value.trim().toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)){show('Informe um e-mail válido.','err');return;}
+  bt.disabled=true;show('Enviando…');
+  fetch(URL_+'/rest/v1/subscribers?on_conflict=email',{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY,'Prefer':'resolution=ignore-duplicates,return=minimal'},body:JSON.stringify({email:v,name:''})})
+  .then(function(r){ if(!r.ok) throw new Error(r.status); show('Pronto! Avisaremos você assim que a loja reabrir.','ok'); em.value=''; })
+  .catch(function(){ show('Não foi possível registrar agora. Tente novamente em instantes.','err'); })
+  .then(function(){ setTimeout(function(){bt.disabled=false},3000); });
+});
+
+/* área do dono: senha -> confirmar -> reabrir */
+var ownerBox=$('pzOwner'),stepPass=$('pzStepPass'),stepConf=$('pzStepConfirm'),typed='';
+function openOwner(){ typed=''; $('pzPass').value=''; $('pzPassMsg').textContent=''; $('pzConfMsg').textContent=''; stepPass.style.display='block'; stepConf.style.display='none'; ownerBox.classList.add('show'); setTimeout(function(){$('pzPass').focus()},50); }
+function closeOwner(){ ownerBox.classList.remove('show'); typed=''; $('pzPass').value=''; }
+$('pzOwnerLink').onclick=openOwner;
+$('pzPassCancel').onclick=closeOwner;
+$('pzConfCancel').onclick=closeOwner;
+function checkPass(){
+  var pw=$('pzPass').value, m=$('pzPassMsg'), b=$('pzPassOk');
+  if(!pw){m.className='pz-msg err';m.textContent='Digite a senha.';return;}
+  b.disabled=true;m.className='pz-msg';m.textContent='Verificando…';
+  call({action:'check',password:pw}).then(function(j){
+    if(j.ok){ typed=pw; $('pzPass').value=''; m.textContent=''; stepPass.style.display='none'; stepConf.style.display='block'; }
+    else if(j.error==='wrong_password'){ m.className='pz-msg err'; m.textContent='Senha incorreta.'; }
+    else { m.className='pz-msg err'; m.textContent='Não foi possível verificar agora. Tente novamente.'; }
+  }).catch(function(){ m.className='pz-msg err'; m.textContent='Sem conexão. Tente novamente.'; })
+  .then(function(){ b.disabled=false; });
+}
+$('pzPassOk').onclick=checkPass;
+$('pzPass').addEventListener('keydown',function(e){if(e.key==='Enter')checkPass();});
+$('pzConfOk').onclick=function(){
+  var m=$('pzConfMsg'),b=$('pzConfOk'); b.disabled=true; m.className='pz-msg'; m.textContent='Reabrindo a loja…';
+  call({action:'set',password:typed,paused:false}).then(function(j){
+    if(j.ok){ m.className='pz-msg ok'; m.textContent='Pronto! A loja está no ar.'; typed=''; setTimeout(function(){location.reload()},700); }
+    else { m.className='pz-msg err'; m.textContent='Não foi possível reabrir agora. Tente novamente.'; b.disabled=false; }
+  }).catch(function(){ m.className='pz-msg err'; m.textContent='Sem conexão. Tente novamente.'; b.disabled=false; });
+};
+
+/* painel admin: pausar a loja */
+var adm=$('pauseAdminModal');
+$('btnPauseSite').onclick=function(){ $('pauseAdminPass').value=''; $('pauseAdminErr').style.display='none'; adm.classList.add('show'); setTimeout(function(){$('pauseAdminPass').focus()},50); };
+$('pauseAdminCancel').onclick=function(){ adm.classList.remove('show'); $('pauseAdminPass').value=''; };
+function doPause(){
+  var pw=$('pauseAdminPass').value, er=$('pauseAdminErr'), b=$('pauseAdminOk');
+  function err(t){er.textContent=t;er.style.display='block';}
+  if(!pw){err('Digite a senha.');return;}
+  b.disabled=true;er.style.display='none';
+  call({action:'set',password:pw,paused:true}).then(function(j){
+    if(j.ok){ adm.classList.remove('show'); location.reload(); }
+    else if(j.error==='wrong_password'){ err('Senha incorreta.'); }
+    else { err('Não foi possível pausar agora. Tente novamente.'); }
+  }).catch(function(){ err('Sem conexão. Tente novamente.'); })
+  .then(function(){ b.disabled=false; });
+}
+$('pauseAdminOk').onclick=doPause;
+$('pauseAdminPass').addEventListener('keydown',function(e){if(e.key==='Enter')doPause();});
+})();
 </script>
 </body>
 </html>
