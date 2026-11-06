@@ -378,6 +378,61 @@ footer::before{content:'ORIZON WEAR';display:block;font-family:'Libre Caslon Tex
 .step-dot{transition:background .4s ease;}
 @media(prefers-reduced-motion:reduce){.modal-back.show,.modal-back.show .modal,.drawer.show .cart-item{animation:none}.btn::after{display:none}}
 
+
+/* ===== VIDRO (liquid glass em CSS) — só barras e botões ===== */
+:root{--gl-hi:rgba(255,255,255,.65);--gl-edge:rgba(255,255,255,.55);}
+/* barras */
+header.site,.drawer-head,.drawer-foot{
+  background:linear-gradient(180deg,rgba(255,255,255,.62),rgba(255,255,255,.38))!important;
+  -webkit-backdrop-filter:blur(22px) saturate(190%);backdrop-filter:blur(22px) saturate(190%);
+  border-color:rgba(10,10,10,.08)!important;
+  box-shadow:inset 0 1px 0 var(--gl-hi),0 8px 30px -14px rgba(0,0,0,.25);
+}
+.drawer{background:rgba(255,255,255,.78)!important;-webkit-backdrop-filter:blur(26px) saturate(180%);backdrop-filter:blur(26px) saturate(180%);}
+/* botões claros (contorno, ícones, abas) */
+.btn-ghost,.iconbtn{
+  background:linear-gradient(160deg,rgba(255,255,255,.72),rgba(255,255,255,.34))!important;
+  color:#0a0a0a;border:1px solid var(--gl-edge)!important;
+  -webkit-backdrop-filter:blur(14px) saturate(180%);backdrop-filter:blur(14px) saturate(180%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),inset 0 -1px 0 rgba(10,10,10,.06),0 0 0 1px rgba(10,10,10,.12),0 8px 22px -10px rgba(0,0,0,.28);
+}
+.btn-ghost:hover,.iconbtn:hover{background:linear-gradient(160deg,rgba(10,10,10,.88),rgba(10,10,10,.74))!important;color:#fff!important;border-color:rgba(255,255,255,.25)!important;}
+/* botões escuros (principais) */
+.btn-primary{
+  background:linear-gradient(160deg,rgba(48,48,48,.88),rgba(0,0,0,.92))!important;color:#fff!important;
+  border:1px solid rgba(255,255,255,.22)!important;
+  -webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.38),inset 0 -1px 0 rgba(0,0,0,.5),0 10px 26px -10px rgba(0,0,0,.55);
+}
+.btn-primary:hover{background:linear-gradient(160deg,rgba(70,70,70,.9),rgba(10,10,10,.94))!important;}
+/* botão principal sobre o fundo preto do topo */
+.hero .btn-primary{
+  background:linear-gradient(160deg,rgba(255,255,255,.28),rgba(255,255,255,.1))!important;color:#fff!important;
+  border:1px solid rgba(255,255,255,.4)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -1px 0 rgba(255,255,255,.08),0 12px 30px -12px rgba(0,0,0,.7);
+}
+.hero .btn-primary:hover{background:linear-gradient(160deg,rgba(255,255,255,.4),rgba(255,255,255,.18))!important;}
+/* botões no rodapé preto */
+footer .btn,footer .iconbtn,footer button{
+  background:linear-gradient(160deg,rgba(255,255,255,.18),rgba(255,255,255,.06))!important;color:rgba(255,255,255,.8)!important;
+  border:1px solid rgba(255,255,255,.22)!important;
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.3);
+}
+footer .btn:hover,footer .iconbtn:hover,footer button:hover{background:rgba(255,255,255,.9)!important;color:#0a0a0a!important;}
+/* botão flutuante do chat de dúvidas */
+#faqToggle{
+  background:linear-gradient(160deg,rgba(48,48,48,.85),rgba(0,0,0,.9))!important;
+  border:1px solid rgba(255,255,255,.25)!important;
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 14px 32px -10px rgba(0,0,0,.6)!important;
+}
+/* navegador sem suporte a vidro: cores sólidas */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  header.site,.drawer-head,.drawer-foot,.drawer{background:#fff!important}
+  .btn-ghost,.iconbtn{background:#fff!important}
+}
+
 /* ===== FINAL OVERRIDES (must stay last) ===== */
 .logo{gap:8px;align-items:baseline;}
 .logo .lg-o{font-family:'Libre Caslon Text',Georgia,serif!important;font-style:normal!important;font-weight:700;font-size:25px;letter-spacing:.01em;}
