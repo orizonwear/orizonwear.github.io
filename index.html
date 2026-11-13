@@ -2458,6 +2458,118 @@ function makePhotoHoodie(front,back,tint){
   g.setIndex(sign>0?idx:idx.slice().map((v,i,a)=>a[i-(i%3)+((i%3)===0?0:(i%3)===1?2:1)]));g.computeVertexNormals();
   const m=new THREE.MeshStandardMaterial({map:tex,color:tint,roughness:1,metalness:0,envMapIntensity:.9,alphaTest:.5,side:THREE.DoubleSide,toneMapped:false});return new THREE.Mesh(g,m);}
  const g=new THREE.Group();g.add(surface(1,photoTex(front)));g.add(surface(-1,photoTex(back)));g.userData.H=H;return g;}
+/* ---------- moletom modelado (geometria própria) + estampas extraídas das fotos ---------- */
+function vnoise(x,y,z){const h=(a,b,c)=>{let n=Math.sin(a*127.1+b*311.7+c*74.7)*43758.5453;return n-Math.floor(n);};
+ const xi=Math.floor(x),yi=Math.floor(y),zi=Math.floor(z),xf=x-xi,yf=y-yi,zf=z-zi;const s=t=>t*t*(3-2*t);const u=s(xf),v=s(yf),w=s(zf);
+ const L=(a,b,t)=>a+(b-a)*t;
+ return L(L(L(h(xi,yi,zi),h(xi+1,yi,zi),u),L(h(xi,yi+1,zi),h(xi+1,yi+1,zi),u),v),L(L(h(xi,yi,zi+1),h(xi+1,yi,zi+1),u),L(h(xi,yi+1,zi+1),h(xi+1,yi+1,zi+1),u),v),w)*2-1;}
+function foldAt(x,y,z){return .65*vnoise(x*1.4+3,y*1.1,z*1.4)+.35*vnoise(x*3.1,y*2.7+7,z*3.1);}
+function fleeceTex(){const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');const d=g.createImageData(256,256);
+ for(let i=0;i<d.data.length;i+=4){const v=110+Math.random()*90;d.data[i]=d.data[i+1]=d.data[i+2]=v;d.data[i+3]=255;}g.putImageData(d,0,0);
+ const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(7,7);return t;}
+function ribTex(){const c=document.createElement('canvas');c.width=128;c.height=64;const g=c.getContext('2d');
+ for(let x=0;x<128;x+=8){const gr=g.createLinearGradient(x,0,x+8,0);gr.addColorStop(0,'#555');gr.addColorStop(.5,'#eee');gr.addColorStop(1,'#555');g.fillStyle=gr;g.fillRect(x,0,8,64);}
+ const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(10,1);return t;}
+const FLEECE=fleeceTex(),RIB=ribTex();
+const lerpT=(y,tb)=>{if(y<=tb[0][0])return tb[0][1];for(let i=1;i<tb.length;i++){if(y<=tb[i][0]){const t=(y-tb[i-1][0])/(tb[i][0]-tb[i-1][0]);const s=t*t*(3-2*t);return tb[i-1][1]+(tb[i][1]-tb[i-1][1])*s;}}return tb[tb.length-1][1];};
+const HWt=[[-1.95,.9],[-1.6,.98],[-.9,1.08],[0,1.13],[.7,1.1],[1.1,.96],[1.3,.62],[1.42,.07]];
+const HDt=[[-1.95,.5],[-1.6,.54],[-.9,.6],[0,.62],[.7,.56],[1.1,.46],[1.3,.3],[1.42,.05]];
+const SN=2.7;
+function zFront(x,y){const hw=lerpT(y,HWt),hd=lerpT(y,HDt);const q=Math.min(.985,Math.abs(x)/hw);return hd*Math.pow(1-Math.pow(q,SN),1/SN);}
+function loft(y0,y1,rows,cols,scaleB,mat){
+ const pos=[],uv=[],idx=[];
+ for(let j=0;j<=rows;j++){const y=y0+(y1-y0)*j/rows;const hw=lerpT(y,HWt)*scaleB,hd=lerpT(y,HDt)*scaleB;
+  for(let i=0;i<=cols;i++){const a=i/cols*Math.PI*2;const c=Math.cos(a),s=Math.sin(a);
+   let x=hw*Math.sign(c)*Math.pow(Math.abs(c),2/SN),z=hd*Math.sign(s)*Math.pow(Math.abs(s),2/SN);
+   const f=foldAt(x,y,z)*.022;const nx=x/hw,nz=z/hd,nl=Math.hypot(nx,nz)||1;x+=nx/nl*f;z+=nz/nl*f;
+   pos.push(x,y,z);uv.push(i/cols*4,(y-y0)*1.4);}}
+ for(let j=0;j<rows;j++)for(let i=0;i<cols;i++){const a=j*(cols+1)+i,b=a+1,c=a+cols+1,d=c+1;idx.push(a,b,c,b,d,c);}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();
+ const n=g.attributes.normal;for(let j=0;j<=rows;j++){const a=j*(cols+1),b=a+cols;const x=n.getX(a)+n.getX(b),y2=n.getY(a)+n.getY(b),z=n.getZ(a)+n.getZ(b);const l=Math.hypot(x,y2,z)||1;n.setXYZ(a,x/l,y2/l,z/l);n.setXYZ(b,x/l,y2/l,z/l);}
+ return new THREE.Mesh(g,mat);}
+function decalFrom(c,front){// recorta a estampa (pixels que diferem da cor do tecido)
+ const w=c.width,h=c.height,g=c.getContext('2d'),d=g.getImageData(0,0,w,h).data;
+ const zx0=Math.floor(w*.3),zx1=Math.floor(w*.7),zy0=Math.floor(h*.36),zy1=Math.floor(h*.72);const R=[],G=[],B=[];
+ for(let y=zy0;y<zy1;y+=2)for(let x=zx0;x<zx1;x+=2){const k=(y*w+x)*4;if(d[k+3]>200){R.push(d[k]);G.push(d[k+1]);B.push(d[k+2]);}}
+ const med=a=>{a.sort((p,q)=>p-q);return a[a.length>>1]||128;};const base=[med(R),med(G),med(B)];
+ const rx0=Math.floor(w*.2),rx1=Math.floor(w*.8),ry0=Math.floor(h*(front?.28:.2)),ry1=Math.floor(h*.7);
+ const al=new Uint8Array(w*h);
+ for(let y=ry0;y<ry1;y++)for(let x=rx0;x<rx1;x++){const k=(y*w+x)*4;if(d[k+3]<200)continue;const dd=Math.max(Math.abs(d[k]-base[0]),Math.abs(d[k+1]-base[1]),Math.abs(d[k+2]-base[2]));al[y*w+x]=Math.max(0,Math.min(255,(dd-46)*5));}
+ const col=new Int32Array(w),row=new Int32Array(h);for(let y=ry0;y<ry1;y++)for(let x=rx0;x<rx1;x++)if(al[y*w+x]>140){col[x]++;row[y]++;}
+ let x0=-1,x1=-1,y0=-1,y1=-1;for(let x=rx0;x<rx1;x++)if(col[x]>2){if(x0<0)x0=x;x1=x;}for(let y=ry0;y<ry1;y++)if(row[y]>2){if(y0<0)y0=y;y1=y;}
+ const out={base};if(x0<0||(x1-x0)<w*.03||(y1-y0)<h*.02)return out;
+ x0=Math.max(rx0,x0-4);x1=Math.min(rx1-1,x1+4);y0=Math.max(ry0,y0-4);y1=Math.min(ry1-1,y1+4);
+ const cw=x1-x0+1,ch=y1-y0+1,cc=document.createElement('canvas');cc.width=cw;cc.height=ch;const cg=cc.getContext('2d'),od=cg.createImageData(cw,ch);
+ for(let y=0;y<ch;y++)for(let x=0;x<cw;x++){const k=((y0+y)*w+x0+x)*4,o=(y*cw+x)*4;od.data[o]=d[k];od.data[o+1]=d[k+1];od.data[o+2]=d[k+2];od.data[o+3]=al[(y0+y)*w+x0+x];}
+ cg.putImageData(od,0,0);
+ out.canvas=cc;out.cx=(x0+x1)/2/w;out.cy=(y0+y1)/2/h;out.fw=cw/w;out.fh=ch/h;return out;}
+function addDecal(group,box,info,front){
+ if(!info||!info.canvas)return;
+ const Wb=box.max.x-box.min.x,Hb=box.max.y-box.min.y;
+ const dw=info.fw*Wb,dh=info.fh*Hb;
+ const cxm=box.min.x+info.cx*Wb,cym=box.max.y-info.cy*Hb;
+ const tex=new THREE.CanvasTexture(info.canvas);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=8;
+ const sx=front?1:-1,sz=front?1:-1;
+ const nx=26,ny=26,pos=[],uv=[],idx=[];
+ for(let j=0;j<=ny;j++)for(let i=0;i<=nx;i++){const u=i/nx,v=j/ny;let x=(front?1:-1)*0+ (cxm+(u-.5)*dw*(front?1:-1)*(front?1:1));
+  if(!front)x=-(cxm+(u-.5)*dw*-1)+0; // costas: espelha em x
+  const y=cym+(v-.5)*dh;const xx=front?(cxm+(u-.5)*dw):-(cxm+(.5-u)*dw);
+  const z=sz*(zFront(xx,y)+foldAt(xx,y,sz)*.022+.012);pos.push(xx,y,z);uv.push(u,v);}
+ for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const a=j*(nx+1)+i,b=a+1,c=a+nx+1,d=c+1;if(front)idx.push(a,b,c,b,d,c);else idx.push(a,c,b,b,c,d);}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();
+ const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({map:tex,transparent:true,roughness:.85,metalness:0,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3,toneMapped:false}));
+ group.add(m);}
+function makeHoodie(front,back,tintMul){
+ const fi=decalFrom(front,true),bi=back?decalFrom(back,false):{base:fi.base};
+ const b=fi.base;const col=new THREE.Color().setRGB(Math.max(.02,b[0]/255*tintMul),Math.max(.02,b[1]/255*tintMul),Math.max(.02,b[2]/255*tintMul),THREE.SRGBColorSpace);
+ const lum=(b[0]+b[1]+b[2])/765;
+ const mat=new THREE.MeshPhysicalMaterial({color:col,roughness:.92,metalness:0,bumpMap:FLEECE,bumpScale:lum>.5?.7:1.1,sheen:1,sheenRoughness:.55,sheenColor:new THREE.Color(lum>.5?0xffffff:0x555a66),envMapIntensity:lum>.5?.7:1.1,side:THREE.DoubleSide});
+ const ribM=mat.clone();ribM.bumpMap=RIB;ribM.bumpScale=2.4;
+ const lining=new THREE.MeshStandardMaterial({color:col.clone().multiplyScalar(.5),roughness:1,side:THREE.BackSide});
+ const cordM=new THREE.MeshStandardMaterial({color:lum>.5?0xe8e8e4:0x2a2a2c,roughness:.7});
+ const g=new THREE.Group();
+ g.add(loft(-1.62,1.42,70,100,1,mat));
+ const band=loft(-1.96,-1.6,6,100,.985,ribM);g.add(band);
+ // mangas
+ [1,-1].forEach(s=>{
+  const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(s*.7,.74,0),new THREE.Vector3(s*1.32,.34,.04),new THREE.Vector3(s*1.68,-.5,.12),new THREE.Vector3(s*1.82,-1.4,.2)]);
+  const seg=64,rad=30,tg=new THREE.TubeGeometry(curve,seg,.46,rad,false),p=tg.attributes.position;
+  for(let i=0;i<=seg;i++){const u=i/seg,c=curve.getPointAt(u);const k=1-.36*Math.pow(u,.85);
+   for(let j=0;j<=rad;j++){const id=i*(rad+1)+j;let x=p.getX(id)-c.x,y=p.getY(id)-c.y,z=p.getZ(id)-c.z;const f=1+foldAt(c.x*1.2+j*.2,c.y*2,c.z+j*.3)*.07*Math.sin(Math.PI*Math.min(1,u*1.2));p.setXYZ(id,c.x+x*k*f,c.y+y*k*f,c.z+z*k*f);}}
+  tg.computeVertexNormals();g.add(new THREE.Mesh(tg,mat));
+  const e=curve.getPointAt(1),t=curve.getTangentAt(1);
+  const cuff=new THREE.Mesh(new THREE.CylinderGeometry(.3,.285,.34,40,3,true),ribM);cuff.position.copy(e).add(t.clone().multiplyScalar(.1));cuff.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),t);g.add(cuff);
+  const cap=new THREE.Mesh(new THREE.CircleGeometry(.28,28),new THREE.MeshBasicMaterial({color:0x050505,side:THREE.DoubleSide}));cap.position.copy(e).add(t.clone().multiplyScalar(.26));cap.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),t);g.add(cap);
+ });
+ // capuz (casca elipsoidal aberta na frente + borda grossa)
+ const hc=new THREE.Vector3(0,1.8,-.2),hr=new THREE.Vector3(.76,.94,.8),ang=54*Math.PI/180,fr=new THREE.Vector3(0,-.1,1).normalize();
+ const sph=new THREE.SphereGeometry(1,64,48).toNonIndexed(),sp=sph.attributes.position,keep=[];
+ for(let i=0;i<sp.count;i+=3){const cx=(sp.getX(i)+sp.getX(i+1)+sp.getX(i+2))/3,cy=(sp.getY(i)+sp.getY(i+1)+sp.getY(i+2))/3,cz=(sp.getZ(i)+sp.getZ(i+1)+sp.getZ(i+2))/3;const l=Math.hypot(cx,cy,cz);if((cx*fr.x+cy*fr.y+cz*fr.z)/l>Math.cos(ang)*1.0)continue;keep.push(i,i+1,i+2);}
+ const hp=[];keep.forEach(i=>{let x=sp.getX(i),y=sp.getY(i),z=sp.getZ(i);const f=foldAt(x*1.5,y*1.5+4,z*1.5)*.035;const l=1+f;hp.push(hc.x+x*hr.x*l,hc.y+y*hr.y*l,hc.z+z*hr.z*l);});
+ const hg=new THREE.BufferGeometry();hg.setAttribute('position',new THREE.Float32BufferAttribute(hp,3));
+ const huv=[];for(let i=0;i<hp.length;i+=3)huv.push(hp[i]*2.5,hp[i+1]*2.5);hg.setAttribute('uv',new THREE.Float32BufferAttribute(huv,2));hg.computeVertexNormals();
+ const hm=mat.clone();hm.side=THREE.FrontSide;g.add(new THREE.Mesh(hg,hm));g.add(new THREE.Mesh(hg,lining));
+ const r1=new THREE.Vector3(1,0,0),r2=new THREE.Vector3().crossVectors(fr,r1).normalize(),pts=[];
+ for(let k=0;k<48;k++){const th=k/48*Math.PI*2,d=fr.clone().multiplyScalar(Math.cos(ang)).add(r1.clone().multiplyScalar(Math.sin(ang)*Math.cos(th))).add(r2.clone().multiplyScalar(Math.sin(ang)*Math.sin(th)));pts.push(new THREE.Vector3(hc.x+d.x*hr.x*1.005,hc.y+d.y*hr.y*1.005,hc.z+d.z*hr.z*1.005));}
+ const rimC=new THREE.CatmullRomCurve3(pts,true);g.add(new THREE.Mesh(new THREE.TubeGeometry(rimC,96,.1,18,true),hm));
+ // bolso canguru
+ {const nx=24,ny=14,pos=[],idx=[],uv=[];for(let j=0;j<=ny;j++)for(let i=0;i<=nx;i++){const a=i/nx,bq=j/ny,y=-1.18+bq*.8,hw=.7-.17*bq,x=(a*2-1)*hw;const edge=Math.pow(Math.sin(Math.PI*a),.4)*Math.pow(Math.sin(Math.PI*Math.min(1,bq*.98+.01)),.4);
+   pos.push(x,y,zFront(x,y)+.014+.035*edge);uv.push(a*3,bq*2);}
+  for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const a=j*(nx+1)+i,b=a+1,c=a+nx+1,d=c+1;idx.push(a,b,c,b,d,c);}
+  const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));pg.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));pg.setIndex(idx);pg.computeVertexNormals();g.add(new THREE.Mesh(pg,mat));
+  [-1,1].forEach(s=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(.05,.34),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.45,depthWrite:false}));const x=s*.53,y=-.52;m.position.set(x,y,zFront(x,y)+.052);m.rotation.z=s*.28;g.add(m);});}
+ // cordões
+ [-1,1].forEach(s=>{const cv=new THREE.CatmullRomCurve3([new THREE.Vector3(s*.2,.98,.5),new THREE.Vector3(s*.22,.6,.62),new THREE.Vector3(s*.21,.1,.69),new THREE.Vector3(s*.23,-.28,.7)]);
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(cv,30,.026,10,false),cordM));
+  const tip=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,.14,12),new THREE.MeshStandardMaterial({color:0x8a8a8a,metalness:.8,roughness:.35}));tip.position.set(s*.23,-.34,.7);g.add(tip);});
+ const box=new THREE.Box3().setFromObject(g);
+ // estampas das fotos
+ addDecal(g,new THREE.Box3(new THREE.Vector3(box.min.x,-1.96,0),new THREE.Vector3(box.max.x,box.max.y,0)),fi,true);
+ addDecal(g,new THREE.Box3(new THREE.Vector3(box.min.x,-1.96,0),new THREE.Vector3(box.max.x,box.max.y,0)),bi,false);
+ const H=4.5,fit=new THREE.Group(),sc=H/(box.max.y-box.min.y),ctr=(box.max.y+box.min.y)/2;
+ fit.add(g);g.position.y=-ctr;const wrap=new THREE.Group();wrap.add(fit);fit.scale.set(sc*Math.min(1.25,Math.max(.8,(front.width/front.height)*(box.max.y-box.min.y)/(box.max.x-box.min.x))),sc,sc);
+ wrap.userData.H=H;return wrap;}
+
 function glowTex(){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');const gr=x.createRadialGradient(128,128,0,128,128,128);gr.addColorStop(0,'rgba(255,255,255,.5)');gr.addColorStop(.45,'rgba(255,255,255,.1)');gr.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=gr;x.fillRect(0,0,256,256);return new THREE.CanvasTexture(c);}
 const lightBack=new THREE.DirectionalLight(0xffffff,1.0);lightBack.position.set(-2,4,-6);scene.add(lightBack);
 async function loadPhotoHoodies(){
@@ -2472,8 +2584,8 @@ async function loadPhotoHoodies(){
   const [iw,ib]=await Promise.all([pick(pw),pick(pb)]);
   if(!iw||!ib)return false;
   const hw=Math.floor(iw.naturalWidth/2),hb=Math.floor(ib.naturalWidth/2);
-  const W=makePhotoHoodie(cutHalf(iw,0,hw),cutHalf(iw,hw,hw),0xeaeaea);
-  const B=makePhotoHoodie(cutHalf(ib,0,hb),cutHalf(ib,hb,hb),0xffffff);
+  const W=makeHoodie(cutHalf(iw,0,hw),cutHalf(iw,hw,hw),.94);
+  const B=makeHoodie(cutHalf(ib,0,hb),cutHalf(ib,hb,hb),1);
   const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex(),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false}));
   glow.scale.set(wide?9:5.5,wide?9:5.5,1);scene.add(glow);photo.glow=glow;
   scene.add(W);scene.add(B);photo.W=W;photo.B=B;photo.ready=true;model.visible=false;kick();return true;
