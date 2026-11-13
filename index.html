@@ -535,6 +535,7 @@ html.pd-open #faqToggle,html.pd-open #faqPanel{display:none!important}
 .pd-hint{position:absolute;left:10px;bottom:10px;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;background:rgba(255,255,255,.92);border:1px solid var(--border);border-radius:999px;padding:3px 10px;pointer-events:none}
 .pd-arrow{position:absolute;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;border:1px solid var(--text);background:rgba(255,255,255,.92);cursor:pointer;font-size:16px;display:none}
 @media(hover:hover) and (min-width:700px){.pd-arrow{display:block}}
+.pd-dots{bottom:16px}
 .pd-arrow.l{left:10px}.pd-arrow.r{right:10px}
 .pd-thumbs{display:flex;gap:8px;margin-top:10px;overflow-x:auto;scrollbar-width:none}
 .pd-thumbs::-webkit-scrollbar{display:none}
@@ -597,6 +598,13 @@ html.pd-open #faqToggle,html.pd-open #faqPanel{display:none!important}
 #pdLb .c{position:absolute;left:0;right:0;bottom:max(18px,env(safe-area-inset-bottom));text-align:center;color:rgba(255,255,255,.75);font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;z-index:2;pointer-events:none}
 @media(prefers-reduced-motion:reduce){#pd,#pd.show{transition:none}}
 
+
+.cs-track{position:absolute;inset:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+.cs-track::-webkit-scrollbar{display:none}
+.swatch .cs-track img{position:static;flex:0 0 100%;width:100%;height:100%;object-fit:cover;scroll-snap-align:center;scroll-snap-stop:always;user-select:none;-webkit-user-drag:none}
+.cs-dots{position:absolute;left:0;right:0;bottom:14px;display:flex;justify-content:center;gap:7px;z-index:2;pointer-events:none}
+.cs-dots i{width:8px;height:8px;border-radius:50%;background:#fff;border:1px solid rgba(0,0,0,.35);box-shadow:0 1px 3px rgba(0,0,0,.18);transition:background .2s,transform .2s,border-color .2s}
+.cs-dots i.on{background:#0a0a0a;border-color:#0a0a0a;transform:scale(1.15)}
 </style>
 </head>
 <body>
@@ -1170,12 +1178,8 @@ function renderProducts(){
     const imgs = (p.images && p.images.length ? p.images : []).filter(img => img && img.length < MAX_INLINE_IMAGE_CHARS);
     card.innerHTML = `
       <div class="swatch ${!p.active ? 'inactive':''}" style="background:${swatchBg(p)};">
-        ${imgs.length ? `<img src="${imgs[productImgIndex[p.id]||0]}" alt="${escapeHtml(p.name)}" data-pid="${p.id}">` : ''}
-        ${imgs.length > 1 ? `
-          <button type="button" data-imgprev="${p.id}" style="position:absolute;left:6px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.85);border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;">‹</button>
-          <button type="button" data-imgnext="${p.id}" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.85);border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;">›</button>
-          <div style="position:absolute;bottom:34px;left:0;right:0;text-align:center;font-size:10px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.6);">${imgs.length} fotos</div>
-        ` : ''}
+        ${imgs.length ? `<div class="cs-track" data-ctrack="${p.id}">${imgs.map((src,i)=>`<img src="${src}" alt="${escapeHtml(p.name)}" data-pid="${p.id}" draggable="false" ${i?'loading="lazy"':''}>`).join('')}</div>` : ''}
+        ${imgs.length > 1 ? `<div class="cs-dots" aria-hidden="true">${imgs.map((_,i)=>`<i class="${i===(productImgIndex[p.id]||0)?'on':''}"></i>`).join('')}</div>` : ''}
         <span class="tag" id="tag-${p.id}">${outOfStock ? 'Fora de estoque' : 'Em estoque'}</span>
       </div>
       <div class="card-body">
@@ -1212,6 +1216,21 @@ function renderProducts(){
   grid.querySelectorAll('[data-toggle]').forEach(b => b.onclick = () => toggleActive(b.dataset.toggle));
   grid.querySelectorAll('[data-imgprev]').forEach(b => b.onclick = () => cycleProductImage(b.dataset.imgprev, -1));
   grid.querySelectorAll('[data-imgnext]').forEach(b => b.onclick = () => cycleProductImage(b.dataset.imgnext, 1));
+  grid.querySelectorAll('[data-ctrack]').forEach(tr => {
+    const pid = tr.dataset.ctrack, dots = tr.parentElement.querySelectorAll('.cs-dots i');
+    const idx0 = productImgIndex[pid]||0;
+    if(idx0) tr.scrollLeft = idx0 * tr.clientWidth;
+    let raf = 0;
+    tr.addEventListener('scroll', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
+      const i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)); productImgIndex[pid] = i;
+      dots.forEach((d,k) => d.classList.toggle('on', k===i)); }); }, {passive:true});
+    // arrastar com o mouse (no celular o dedo já arrasta sozinho)
+    let down=false, sx=0, sl=0, moved=false;
+    tr.addEventListener('pointerdown', e => { if(e.pointerType!=='mouse') return; down=true; moved=false; sx=e.clientX; sl=tr.scrollLeft; });
+    window.addEventListener('pointermove', e => { if(!down) return; const dx=e.clientX-sx; if(Math.abs(dx)>5){ moved=true; tr.style.scrollSnapType='none'; tr.style.cursor='grabbing'; tr.scrollLeft = sl - dx; } });
+    window.addEventListener('pointerup', e => { if(!down) return; down=false; tr.style.cursor=''; if(moved){ const w=Math.max(1,tr.clientWidth), dx=e.clientX-sx, i0=Math.round(sl/w), n=tr.children.length; const i=Math.max(0,Math.min(n-1, dx<-40?i0+1:(dx>40?i0-1:i0))); tr.scrollTo({left:i*w,behavior:'smooth'}); setTimeout(()=>{tr.style.scrollSnapType='';},350); } });
+    tr.addEventListener('click', e => { if(moved){ e.stopPropagation(); e.preventDefault(); moved=false; } }, true);
+  });
   const addBtn = document.getElementById('openAddProduct');
   if(addBtn) addBtn.onclick = () => openProductModal(null);
 }
@@ -2355,8 +2374,8 @@ function render(p){
     <div class="pd-gal"><div class="pd-slider">
       <div class="pd-track" id="pdTrack">${slides}</div>
       ${imgs.length>1?`<button class="pd-arrow l" id="pdPrev" type="button" aria-label="Foto anterior">‹</button><button class="pd-arrow r" id="pdNext" type="button" aria-label="Próxima foto">›</button>`:''}
-      ${imgs.length?`<span class="pd-hint">Toque para ampliar</span>`:''}
-      ${imgs.length>1?`<span class="pd-count" id="pdCount">1 / ${imgs.length}</span>`:''}
+      
+      ${imgs.length>1?`<div class="cs-dots pd-dots" id="pdDots" aria-hidden="true">${imgs.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div>`:''}
     </div>
     ${imgs.length>1?`<div class="pd-thumbs" id="pdThumbs">${imgs.map((s,i)=>`<button type="button" class="pd-thumb ${i?'':'on'}" data-t="${i}" style="background-image:url('${s}')" aria-label="Ver foto ${i+1}"></button>`).join('')}</div>`:''}
     </div>
@@ -2392,7 +2411,7 @@ function wireSizes(p){
   body.querySelectorAll('[data-nm]').forEach(b=>b.onclick=()=>openNotifyMeForm(p.id,b.dataset.nm));
 }
 function sync(){
-  const c=$('pdCount');if(c)c.textContent=(PD.idx+1)+' / '+PD.imgs.length;
+  document.querySelectorAll('#pdDots i').forEach((d,i)=>d.classList.toggle('on',i===PD.idx));
   body.querySelectorAll('.pd-thumb').forEach((t,i)=>t.classList.toggle('on',i===PD.idx));
   const on=body.querySelector('.pd-thumb.on');if(on&&on.scrollIntoView)on.scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'});
 }
