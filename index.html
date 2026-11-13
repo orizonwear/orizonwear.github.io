@@ -606,6 +606,45 @@ html.pd-open #faqToggle,html.pd-open #faqPanel{display:none!important}
 .cs-dots i{width:8px;height:8px;border-radius:50%;background:#fff;border:1px solid rgba(0,0,0,.35);box-shadow:0 1px 3px rgba(0,0,0,.18);transition:background .2s,transform .2s,border-color .2s}
 .cs-dots i.on{background:#0a0a0a;border-color:#0a0a0a;transform:scale(1.15)}
 </style>
+<style id="pdGlass">
+/* ===== vidro líquido dentro da página do moletom ===== */
+#pd{background:#e9e8e4}
+.pd-fx{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+.pd-fx i{position:absolute;border-radius:50%;filter:blur(50px)}
+.pd-fx i:nth-child(1){width:70vmax;height:70vmax;left:-25vmax;top:-30vmax;background:radial-gradient(circle,rgba(255,255,255,.95),rgba(255,255,255,0) 68%)}
+.pd-fx i:nth-child(2){width:55vmax;height:55vmax;right:-22vmax;top:18vh;background:radial-gradient(circle,rgba(10,10,10,.20),rgba(10,10,10,0) 68%)}
+.pd-fx i:nth-child(3){width:60vmax;height:60vmax;left:-18vmax;bottom:-32vmax;background:radial-gradient(circle,rgba(10,10,10,.16),rgba(10,10,10,0) 68%)}
+.pd-top,.pd-bar{background:linear-gradient(180deg,rgba(255,255,255,.66),rgba(255,255,255,.36))!important;-webkit-backdrop-filter:blur(22px) saturate(190%);backdrop-filter:blur(22px) saturate(190%);border-color:rgba(10,10,10,.07)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 8px 30px -14px rgba(0,0,0,.25)}
+.pd-bar{box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 -8px 30px -14px rgba(0,0,0,.25)}
+.pd-btn{background:linear-gradient(160deg,rgba(255,255,255,.74),rgba(255,255,255,.32));color:#0a0a0a;border:1px solid rgba(255,255,255,.55);-webkit-backdrop-filter:blur(14px) saturate(180%);backdrop-filter:blur(14px) saturate(180%);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),inset 0 -1px 0 rgba(10,10,10,.06),0 0 0 1px rgba(10,10,10,.12),0 8px 22px -10px rgba(0,0,0,.28)}
+.pd-btn:hover{background:linear-gradient(160deg,rgba(10,10,10,.88),rgba(10,10,10,.74));color:#fff;border-color:rgba(255,255,255,.25)}
+.pd-add{background:linear-gradient(160deg,rgba(52,52,52,.9),rgba(0,0,0,.94));color:#fff;border:1px solid rgba(255,255,255,.22);-webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%);box-shadow:inset 0 1px 0 rgba(255,255,255,.38),inset 0 -1px 0 rgba(0,0,0,.5),0 10px 26px -10px rgba(0,0,0,.55);padding:15px 30px}
+.pd-add:hover{background:linear-gradient(160deg,rgba(74,74,74,.92),rgba(12,12,12,.95))}
+.pd-size{height:50px;min-width:62px;border-radius:16px;background:linear-gradient(160deg,rgba(255,255,255,.72),rgba(255,255,255,.3));border:1px solid rgba(255,255,255,.6);-webkit-backdrop-filter:blur(14px) saturate(180%);backdrop-filter:blur(14px) saturate(180%);box-shadow:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(10,10,10,.06),0 0 0 1px rgba(10,10,10,.14),0 8px 20px -10px rgba(0,0,0,.25)}
+.pd-size:hover{background:linear-gradient(160deg,rgba(255,255,255,.9),rgba(255,255,255,.5))}
+.pd-size.on{background:linear-gradient(160deg,rgba(52,52,52,.92),rgba(0,0,0,.95));color:#fff;border-color:rgba(255,255,255,.22);box-shadow:inset 0 1px 0 rgba(255,255,255,.38),0 10px 24px -10px rgba(0,0,0,.55)}
+.pd-size.off{background:rgba(255,255,255,.28);box-shadow:0 0 0 1px rgba(10,10,10,.06);color:var(--text-muted)}
+.pd-stock{background:linear-gradient(160deg,rgba(255,255,255,.7),rgba(255,255,255,.3));border-color:rgba(255,255,255,.6);box-shadow:0 0 0 1px rgba(10,10,10,.14),inset 0 1px 0 rgba(255,255,255,.9);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.pd-track{border-radius:24px;border-color:rgba(255,255,255,.7);box-shadow:0 0 0 1px rgba(10,10,10,.08),0 24px 50px -24px rgba(0,0,0,.35)}
+.pd-thumb{border-radius:14px;border:1px solid rgba(255,255,255,.7);box-shadow:0 0 0 1px rgba(10,10,10,.1)}
+.pd-thumb.on{box-shadow:0 0 0 2px #0a0a0a}
+.pd-model i{border-radius:16px;border:1px solid rgba(255,255,255,.7);box-shadow:0 0 0 1px rgba(10,10,10,.1)}
+.pd-model.on i{border:1px solid rgba(255,255,255,.7);box-shadow:0 0 0 2px #0a0a0a}
+.pd-dots{bottom:14px}
+.pd-dots{left:50%;right:auto;transform:translateX(-50%);width:auto;padding:7px 12px;border-radius:999px;background:linear-gradient(160deg,rgba(255,255,255,.62),rgba(255,255,255,.28));border:1px solid rgba(255,255,255,.6);-webkit-backdrop-filter:blur(12px) saturate(180%);backdrop-filter:blur(12px) saturate(180%);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 0 0 1px rgba(10,10,10,.1)}
+.pd-arrow{background:linear-gradient(160deg,rgba(255,255,255,.74),rgba(255,255,255,.34));border-color:rgba(255,255,255,.6);-webkit-backdrop-filter:blur(12px) saturate(180%);backdrop-filter:blur(12px) saturate(180%);box-shadow:0 0 0 1px rgba(10,10,10,.12),inset 0 1px 0 rgba(255,255,255,.9)}
+.pd-panel{background:linear-gradient(160deg,rgba(255,255,255,.7),rgba(255,255,255,.34));border:1px solid rgba(255,255,255,.65);border-radius:24px;-webkit-backdrop-filter:blur(18px) saturate(180%);backdrop-filter:blur(18px) saturate(180%);box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 0 0 1px rgba(10,10,10,.07),0 20px 46px -26px rgba(0,0,0,.3)}
+.pd-spec.pd-panel{padding:6px 26px;margin-top:18px}
+.pd-spec dt:nth-last-of-type(1),.pd-spec dd:last-of-type{border-bottom:none}
+.pd-tw{padding:8px 22px;margin-top:18px;max-width:680px;overflow-x:auto}
+.pd-table{margin-top:0}
+.pd-table tr:last-child td{border-bottom:none}
+.pd-table tr.hl td,.pd-table th.hl{background:rgba(10,10,10,.07)}
+.pd-notify button{border-radius:999px}
+#pdLb .x,#pdLb .a{background:linear-gradient(160deg,rgba(255,255,255,.26),rgba(255,255,255,.08));border:1px solid rgba(255,255,255,.4);-webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%);box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
+@media(max-width:600px){.pd-spec{grid-template-columns:132px 1fr}.pd-spec.pd-panel{padding:4px 20px}.pd-tw{padding:6px 12px}.pd-table th,.pd-table td{padding:13px 3px;white-space:nowrap;font-size:13px}.pd-table td:first-child{white-space:normal;font-size:12.5px;padding-right:6px}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.pd-top,.pd-bar,.pd-panel,.pd-btn,.pd-size{background:#fff!important}}
+</style>
 </head>
 <body>
 
@@ -1180,18 +1219,10 @@ function renderProducts(){
       <div class="swatch ${!p.active ? 'inactive':''}" style="background:${swatchBg(p)};">
         ${imgs.length ? `<div class="cs-track" data-ctrack="${p.id}">${imgs.map((src,i)=>`<img src="${src}" alt="${escapeHtml(p.name)}" data-pid="${p.id}" draggable="false" ${i?'loading="lazy"':''}>`).join('')}</div>` : ''}
         ${imgs.length > 1 ? `<div class="cs-dots" aria-hidden="true">${imgs.map((_,i)=>`<i class="${i===(productImgIndex[p.id]||0)?'on':''}"></i>`).join('')}</div>` : ''}
-        <span class="tag" id="tag-${p.id}">${outOfStock ? 'Fora de estoque' : 'Em estoque'}</span>
       </div>
       <div class="card-body">
         <h3>${escapeHtml(p.name)}</h3>
-        <div class="desc">${escapeHtml(p.desc)}</div>
-        <div class="sizes">${SIZES.map(s=>{
-          const avail = p.sizes.includes(s);
-          return avail
-            ? `<span class="size-pill" style="cursor:pointer;" data-tagpid="${p.id}" data-avail="1" data-sizename="${s}">${s}</span>`
-            : `<span class="size-pill" style="color:var(--danger);border-color:var(--danger);text-decoration:line-through;cursor:pointer;" data-tagpid="${p.id}" data-avail="0" data-sizename="${s}">${s}</span>`;
-        }).join('')}</div>
-        <div class="price-row"><span class="price">${money(p.price)}</span><span class="card-more">Ver detalhes</span></div>
+        <div class="price-row"><span class="price">${money(p.price)}</span></div>
         ${state.isAdmin ? `<div class="admin-actions">
           <button class="btn btn-ghost btn-small" data-edit="${p.id}">Editar</button>
           <button class="btn btn-ghost btn-small" data-toggle="${p.id}">${p.active?'Pausar':'Ativar'}</button>
@@ -2321,6 +2352,7 @@ $('pauseAdminPass').addEventListener('keydown',function(e){if(e.key==='Enter')do
 })();
 </script>
 <div id="pd" role="dialog" aria-modal="true" aria-label="Detalhes do moletom" aria-hidden="true">
+  <div class="pd-fx" aria-hidden="true"><i></i><i></i><i></i></div>
   <div class="pd-top">
     <button class="pd-btn" id="pdBack" type="button">← Voltar</button>
     <div class="crumb" id="pdCrumb"></div>
@@ -2388,8 +2420,8 @@ function render(p){
       <div id="pdSizeBox">${sizesHtml(p)}</div>
       ${others.length>1?`<div class="pd-lab"><span>Modelo</span></div><div class="pd-models">${others.map(o=>{const oi=imgsOf(o)[0];return `<button type="button" class="pd-model ${String(o.id)===String(p.id)?'on':''}" data-m="${o.id}"><i style="${oi?`background-image:url('${oi}')`:`background:linear-gradient(160deg,${o.color||'#ccc'},#f3f2ef)`}"></i>${escapeHtml(o.name)}</button>`;}).join('')}</div>`:''}
     </div></div></div>
-    <section class="pd-sec" id="pdQual"><h2>Qualidade do moletom</h2><dl class="pd-spec">${SPEC.map(r=>`<dt>${r[0]}</dt><dd>${r[1]}</dd>`).join('')}</dl></section>
-    <section class="pd-sec" id="pdMed"><h2>Tabela de medidas</h2>${tableHtml()}<p class="pd-note">Encolhimento pós-lavagem: comprimento 4-8%, largura 3-5%. As medidas podem variar até 3 cm para mais ou para menos.</p></section>`;
+    <section class="pd-sec" id="pdQual"><h2>Qualidade do moletom</h2><dl class="pd-spec pd-panel">${SPEC.map(r=>`<dt>${r[0]}</dt><dd>${r[1]}</dd>`).join('')}</dl></section>
+    <section class="pd-sec" id="pdMed"><h2>Tabela de medidas</h2><div class="pd-panel pd-tw">${tableHtml()}</div><p class="pd-note">Encolhimento pós-lavagem: comprimento 4-8%, largura 3-5%. As medidas podem variar até 3 cm para mais ou para menos.</p></section>`;
   $('pdCrumb').innerHTML=`Catálogo / <b>${escapeHtml(p.name)}</b>`;
   wire(p);renderBar(p);markTable();
 }
