@@ -549,6 +549,22 @@ html.gl-on .stage-pin{cursor:grab}
 .stage h1{font-family:'DM Sans',sans-serif;font-weight:500;letter-spacing:-.035em;line-height:1.02;font-size:clamp(46px,8vw,96px)}
 .stage .lead{font-size:16.5px;line-height:1.65;max-width:520px;margin-top:24px}
 .stage .hero-cta{margin-top:30px}
+
+/* celular: moletom em cima, texto embaixo, sem sobrepor */
+@media(max-width:820px){
+ html.gl-on #gl{bottom:auto;height:54%;-webkit-mask-image:linear-gradient(#000 82%,transparent);mask-image:linear-gradient(#000 82%,transparent)}
+ html.gl-on .ghost{top:27%;font-size:30vw}
+ html.gl-on .ch{top:auto;bottom:18px;transform:none;padding:0 20px}
+ html.gl-on .ch0 .eyebrow-plain{display:none}
+ html.gl-on .ch0 h1{font-size:clamp(34px,10.4vw,50px)}
+ html.gl-on .ch0 .lead{font-size:14.5px;line-height:1.5;margin-top:12px}
+ html.gl-on .ch0 .lead br,html.gl-on .ch0 .lead .lead2{display:none}
+ html.gl-on .ch0 .hero-cta{margin-top:16px}
+ .ch h2{font-size:clamp(34px,10.5vw,48px)}
+ .ch p{font-size:15px;margin-top:12px}
+ .ch .num{margin-bottom:8px}
+ html.gl-on .stage-pin{touch-action:pan-y}
+}
 </style>
 <script>
 (function(){
@@ -631,7 +647,7 @@ html.gl-on .stage-pin{cursor:grab}
     <div class="ch ch0">
       <div class="eyebrow-plain">Moletons unissex · entrega para todo o Brasil · produção e envio em até 15 dias úteis</div>
       <h1><span class="w">Peso,</span> <span class="w">corte</span> <span class="w">e</span> <span class="w it">silêncio.</span></h1>
-      <p class="lead">Moletons desenvolvidos para o seu conforto: malha pesada, corte reto e estampas autorais que expressam atitude e autenticidade.<br>Pagamento exclusivamente via Pix, diretamente na conta da loja.</p>
+      <p class="lead">Moletons desenvolvidos para o seu conforto: malha pesada, corte reto e estampas autorais que expressam atitude e autenticidade.<br><span class="lead2">Pagamento exclusivamente via Pix, diretamente na conta da loja.</span></p>
       <div class="hero-cta"><button class="btn btn-primary" id="heroGo" type="button"><span class="roll"><span>Ver moletons</span><span aria-hidden="true">Descendo ↓</span></span></button></div>
     </div>
     <div class="ch ch1"><div class="num">01</div><h2>Malha pesada.</h2><p>Moletom de 2 cabos, gramatura 310, interior flanelado, punho e barra em retilínea.</p></div>
@@ -2386,7 +2402,7 @@ const model=new THREE.Group();model.add(hood);hood.position.y=.1;scene.add(model
 model.scale.setScalar(.95);
 
 
-/* ---------- moletons reais (fotos da loja, recortadas no navegador) ---------- */
+/* ---------- moletons reais (fotos da loja, recortadas e infladas em volume 3D) ---------- */
 const photo={ready:false,W:null,B:null,glow:null};
 function loadImg(src){return new Promise(res=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>res(null);i.src=src;});}
 function cutHalf(img,sx,sw){
@@ -2397,26 +2413,53 @@ function cutHalf(img,sx,sw){
  const bg=new Uint8Array(sw*h),st=[];
  for(let x=0;x<sw;x++)st.push(x,0,x,h-1);for(let y=0;y<h;y++)st.push(0,y,sw-1,y);
  while(st.length){const y=st.pop(),x=st.pop();if(x<0||y<0||x>=sw||y>=h)continue;const p=y*sw+x;if(bg[p]||!near(p*4))continue;bg[p]=1;st.push(x+1,y,x-1,y,x,y+1,x,y-1);}
- const fg=new Uint8Array(sw*h);for(let p=0;p<sw*h;p++)fg[p]=bg[p]?0:1;
- for(let y=1;y<h-1;y++)for(let x=1;x<sw-1;x++){const p=y*sw+x;if(!fg[p]){d[p*4+3]=0;continue;}
-  const n=fg[p-1]+fg[p+1]+fg[p-sw]+fg[p+sw]+fg[p-sw-1]+fg[p-sw+1]+fg[p+sw-1]+fg[p+sw+1];d[p*4+3]=n>=8?255:n>=6?170:n>=4?90:0;}
+ // manter só o maior pedaço (tira manchas soltas)
+ const lab=new Int32Array(sw*h),sizes=[0];let nl=0;
+ for(let p0=0;p0<sw*h;p0++){if(bg[p0]||lab[p0])continue;nl++;let cnt=0;const q=[p0];lab[p0]=nl;
+  while(q.length){const p=q.pop();cnt++;const x=p%sw,y=(p/sw)|0;
+   if(x>0&&!bg[p-1]&&!lab[p-1]){lab[p-1]=nl;q.push(p-1);}if(x<sw-1&&!bg[p+1]&&!lab[p+1]){lab[p+1]=nl;q.push(p+1);}
+   if(y>0&&!bg[p-sw]&&!lab[p-sw]){lab[p-sw]=nl;q.push(p-sw);}if(y<h-1&&!bg[p+sw]&&!lab[p+sw]){lab[p+sw]=nl;q.push(p+sw);}}
+  sizes[nl]=cnt;}
+ let best=1;for(let i=2;i<=nl;i++)if(sizes[i]>sizes[best])best=i;
+ const a0=new Float32Array(sw*h);for(let p=0;p<sw*h;p++)a0[p]=lab[p]===best?1:0;
+ // suavizar a borda (duas passadas de média 3x3)
+ let a1=new Float32Array(sw*h);
+ for(let it=0;it<2;it++){for(let y=1;y<h-1;y++)for(let x=1;x<sw-1;x++){const p=y*sw+x;a1[p]=(a0[p]*4+a0[p-1]+a0[p+1]+a0[p-sw]+a0[p+sw]+(a0[p-sw-1]+a0[p-sw+1]+a0[p+sw-1]+a0[p+sw+1])*.5)/8;}
+  const t=a0;a0.set(a1);}
+ for(let p=0;p<sw*h;p++){let v=a0[p];v=v<.5?0:Math.min(1,(v-.5)*3.2+.35);d[p*4+3]=v*255|0;}
  for(let x=0;x<sw;x++){d[x*4+3]=0;d[((h-1)*sw+x)*4+3]=0;}for(let y=0;y<h;y++){d[y*sw*4+3]=0;d[(y*sw+sw-1)*4+3]=0;}
  g.putImageData(id,0,0);
- // aparar as bordas vazias
  let x0=sw,x1=0,y0=h,y1=0;for(let y=0;y<h;y++)for(let x=0;x<sw;x++){if(d[(y*sw+x)*4+3]>40){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}}
  const m=6;x0=Math.max(0,x0-m);y0=Math.max(0,y0-m);x1=Math.min(sw-1,x1+m);y1=Math.min(h-1,y1+m);
  const o=document.createElement('canvas');o.width=x1-x0+1;o.height=y1-y0+1;o.getContext('2d').drawImage(c,x0,y0,o.width,o.height,0,0,o.width,o.height);return o;}
-function photoTex(c){const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;t.generateMipmaps=true;t.minFilter=THREE.LinearMipmapLinearFilter;return t;}
-function makePhotoHoodie(front,back,edgeColor){
- const H=4.5,g=new THREE.Group();
- const fa=front.width/front.height,ba=back.width/back.height;
- const mk=(tex,color)=>new THREE.MeshBasicMaterial({map:tex,color:color||0xffffff,transparent:false,alphaTest:.45,alphaToCoverage:true,side:THREE.FrontSide,toneMapped:false});
- const ft=photoTex(front),bt=photoTex(back);
- const f=new THREE.Mesh(new THREE.PlaneGeometry(H*fa,H),mk(ft));f.position.z=.05;g.add(f);
- const b=new THREE.Mesh(new THREE.PlaneGeometry(H*ba,H),mk(bt));b.rotation.y=Math.PI;b.position.z=-.05;g.add(b);
- for(let i=0;i<9;i++){const z=-.04+i*.01;const sl=new THREE.Mesh(new THREE.PlaneGeometry(H*fa*.995,H*.995),mk(ft,edgeColor));sl.position.z=z;sl.material.side=THREE.DoubleSide;g.add(sl);}
- g.userData.H=H;return g;}
-function glowTex(){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');const gr=x.createRadialGradient(128,128,0,128,128,128);gr.addColorStop(0,'rgba(255,255,255,.55)');gr.addColorStop(.5,'rgba(255,255,255,.12)');gr.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=gr;x.fillRect(0,0,256,256);return new THREE.CanvasTexture(c);}
+function photoTex(c){const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;return t;}
+// distância até a borda (para "inflar" a silhueta)
+function depthField(c){
+ const gw=Math.max(48,Math.min(110,Math.round(c.width/4))),gh=Math.max(48,Math.round(gw*c.height/c.width));
+ const t=document.createElement('canvas');t.width=gw;t.height=gh;const g=t.getContext('2d');g.drawImage(c,0,0,gw,gh);
+ const d=g.getImageData(0,0,gw,gh).data,INF=1e9,dist=new Float32Array(gw*gh);
+ for(let p=0;p<gw*gh;p++)dist[p]=d[p*4+3]>110?INF:0;
+ for(let y=0;y<gh;y++)for(let x=0;x<gw;x++){const p=y*gw+x;if(!dist[p])continue;let v=dist[p];
+  if(x>0)v=Math.min(v,dist[p-1]+1);if(y>0)v=Math.min(v,dist[p-gw]+1);if(x>0&&y>0)v=Math.min(v,dist[p-gw-1]+1.414);if(x<gw-1&&y>0)v=Math.min(v,dist[p-gw+1]+1.414);dist[p]=v;}
+ let mx=0;for(let y=gh-1;y>=0;y--)for(let x=gw-1;x>=0;x--){const p=y*gw+x;if(!dist[p])continue;let v=dist[p];
+  if(x<gw-1)v=Math.min(v,dist[p+1]+1);if(y<gh-1)v=Math.min(v,dist[p+gw]+1);if(x<gw-1&&y<gh-1)v=Math.min(v,dist[p+gw+1]+1.414);if(x>0&&y<gh-1)v=Math.min(v,dist[p+gw-1]+1.414);dist[p]=v;if(v>mx)mx=v;}
+ for(let it=0;it<3;it++){const o=dist.slice();for(let y=1;y<gh-1;y++)for(let x=1;x<gw-1;x++){const p=y*gw+x;if(!o[p])continue;dist[p]=(o[p]*4+o[p-1]+o[p+1]+o[p-gw]+o[p+gw])/8;}}
+ return {gw,gh,dist,mx};}
+function makePhotoHoodie(front,back,tint){
+ const H=4.5,Wd=H*front.width/front.height,T=.36,f=depthField(front),gw=f.gw,gh=f.gh;
+ const nv=gw*gh,P=new Float32Array(nv*3),UV=new Float32Array(nv*2),Z=new Float32Array(nv);
+ for(let j=0;j<gh;j++)for(let i=0;i<gw;i++){const k=j*gw+i;const u=i/(gw-1),v=1-j/(gh-1);
+  const tt=Math.min(1,f.dist[k]/(f.mx*.42));Z[k]=T*Math.pow(Math.max(0,1-(1-tt)*(1-tt)),.7);
+  P[k*3]=(u-.5)*Wd;P[k*3+1]=(v-.5)*H;UV[k*2]=u;UV[k*2+1]=v;}
+ const idx=[];for(let j=0;j<gh-1;j++)for(let i=0;i<gw-1;i++){const a=j*gw+i,b=a+1,c=a+gw,d=c+1;idx.push(a,c,b,b,c,d);}
+ function surface(sign,tex){const g=new THREE.BufferGeometry();const pos=new Float32Array(nv*3),uv=new Float32Array(nv*2);
+  for(let k=0;k<nv;k++){pos[k*3]=P[k*3];pos[k*3+1]=P[k*3+1];pos[k*3+2]=sign*Z[k];uv[k*2]=sign>0?UV[k*2]:1-UV[k*2];uv[k*2+1]=UV[k*2+1];}
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('uv',new THREE.BufferAttribute(uv,2));
+  g.setIndex(sign>0?idx:idx.slice().map((v,i,a)=>a[i-(i%3)+((i%3)===0?0:(i%3)===1?2:1)]));g.computeVertexNormals();
+  const m=new THREE.MeshStandardMaterial({map:tex,color:tint,roughness:1,metalness:0,envMapIntensity:.9,alphaTest:.5,side:THREE.DoubleSide,toneMapped:false});return new THREE.Mesh(g,m);}
+ const g=new THREE.Group();g.add(surface(1,photoTex(front)));g.add(surface(-1,photoTex(back)));g.userData.H=H;return g;}
+function glowTex(){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');const gr=x.createRadialGradient(128,128,0,128,128,128);gr.addColorStop(0,'rgba(255,255,255,.5)');gr.addColorStop(.45,'rgba(255,255,255,.1)');gr.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=gr;x.fillRect(0,0,256,256);return new THREE.CanvasTexture(c);}
+const lightBack=new THREE.DirectionalLight(0xffffff,1.0);lightBack.position.set(-2,4,-6);scene.add(lightBack);
 async function loadPhotoHoodies(){
  try{
   let list=[];
@@ -2429,10 +2472,10 @@ async function loadPhotoHoodies(){
   const [iw,ib]=await Promise.all([pick(pw),pick(pb)]);
   if(!iw||!ib)return false;
   const hw=Math.floor(iw.naturalWidth/2),hb=Math.floor(ib.naturalWidth/2);
-  const W=makePhotoHoodie(cutHalf(iw,0,hw),cutHalf(iw,hw,hw),0xbdbdbd);
-  const B=makePhotoHoodie(cutHalf(ib,0,hb),cutHalf(ib,hb,hb),0x101010);
-  const glow=new THREE.Mesh(new THREE.PlaneGeometry(9,9),new THREE.MeshBasicMaterial({map:glowTex(),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false}));
-  glow.position.z=-.8;W.add(glow);photo.glow=glow;
+  const W=makePhotoHoodie(cutHalf(iw,0,hw),cutHalf(iw,hw,hw),0xeaeaea);
+  const B=makePhotoHoodie(cutHalf(ib,0,hb),cutHalf(ib,hb,hb),0xffffff);
+  const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex(),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false}));
+  glow.scale.set(wide?9:5.5,wide?9:5.5,1);scene.add(glow);photo.glow=glow;
   scene.add(W);scene.add(B);photo.W=W;photo.B=B;photo.ready=true;model.visible=false;kick();return true;
  }catch(err){console.warn('fotos 3D indisponíveis, usando modelo simples',err);return false;}
 }
@@ -2474,9 +2517,9 @@ scene.add(new THREE.Points(pg,dustM));
 /* ---------- tamanho ---------- */
 
 function size(){const hh=hdr?hdr.offsetHeight:73;document.documentElement.style.setProperty('--hh',hh+'px');
- const r=pin.getBoundingClientRect();VW=Math.max(1,r.width);VH=Math.max(1,r.height);
- renderer.setPixelRatio(Math.min(devicePixelRatio,VW<700?1.5:2));renderer.setSize(VW,VH,false);camera.aspect=VW/VH;camera.updateProjectionMatrix();wide=VW/VH>1.05;layoutGallery();}
-size();new ResizeObserver(size).observe(pin);addEventListener('resize',size);
+ const r=cv.getBoundingClientRect();VW=Math.max(1,r.width);VH=Math.max(1,r.height);
+ renderer.setPixelRatio(Math.min(devicePixelRatio,VW<700?1.5:2));renderer.setSize(VW,VH,false);camera.aspect=VW/VH;camera.updateProjectionMatrix();wide=innerWidth>820;layoutGallery();}
+size();new ResizeObserver(size).observe(cv);addEventListener('resize',size);
 
 /* ---------- escolta do progresso ---------- */
 const ease=t=>t*t*(3-2*t);
@@ -2521,19 +2564,19 @@ function frame(now){
  model.rotation.y=ry+px*.25+dRy;model.rotation.x=py*.1+dRx;model.rotation.z=lerp(0,.35,c);
  model.scale.setScalar(ms);
  if(photo.ready){
-  const W=photo.W,B=photo.B,k=wide?1:.5;
+  const W=photo.W,B=photo.B,k=wide?1:.92;
   const ra=ease(seg(p,.12,.3)),rb=ease(seg(p,.38,.5)),rc=ease(seg(p,.55,.7)),rd=ease(seg(p,.7,.84));
-  const hx=wide?1.7:0,hy=wide?0:1.5;
+  const hx=wide?1.7:0,hy=0;
   // branco
   let wx=lerp(hx,wide?-5:-4,rb),wy=lerp(hy,hy+3.2,rb),wz=lerp(0,-7,rb),ws=lerp(.66,.76,ra);ws=lerp(ws,.35,rb);
   let wr=lerp(-.35,Math.PI,ra);wr=lerp(wr,Math.PI+1.4,rb);
-  W.position.set(wx,wy+idle,wz);W.scale.setScalar(ws*k*(wide?1:1.05));W.rotation.set(py*.06+dRx*.5,wr+px*.2+dRy,0);W.visible=rb<.995;
+  W.position.set(wx,wy+idle,wz);W.scale.setScalar(ws*k);W.rotation.set(py*.06+dRx*.5,wr+px*.2+dRy,0);W.visible=rb<.995;
   // preto
   const bin=rb;let bx=lerp(wide?8:6,hx,bin),by=lerp(hy-1.5,hy,bin),bz=lerp(-4,0,bin),bs=lerp(.4,.72,bin);
   bx=lerp(bx,wide?6:5,rd);by=lerp(by,hy+5,rd);bz=lerp(bz,-10,rd);bs=lerp(bs,.35,rd);
   let br=lerp(-1.6,0,bin);br=lerp(br,Math.PI,rc);br=lerp(br,Math.PI+1.2,rd);
-  B.position.set(bx,by+idle,bz);B.scale.setScalar(bs*k*(wide?1:1.05));B.rotation.set(py*.06+dRx*.5,br+px*.2+dRy,0);B.visible=bin>.005&&rd<.995;
-  photo.glow.material.opacity=(1-ease(seg(p,.4,.55)))*.9;
+  B.position.set(bx,by+idle,bz);B.scale.setScalar(bs*k);B.rotation.set(py*.06+dRx*.5,br+px*.2+dRy,0);B.visible=bin>.005&&rd<.995;
+  photo.glow.material.opacity=(1-ease(seg(p,.4,.55)))*.9;photo.glow.position.set(W.position.x*.9+(wide?0:0),W.position.y,W.position.z-1.2);photo.glow.visible=W.visible;
  }
  // câmera
  const cz=lerp(9,wide?7.4:9,a);const cz2=lerp(cz,wide?6.4:8.4,b);
@@ -2551,8 +2594,8 @@ function frame(now){
 function kick(){if(!raf){last=performance.now();raf=requestAnimationFrame(frame);}}
 new IntersectionObserver(es=>{visible=es[0].isIntersecting;if(visible)kick();}).observe(stage);
 addEventListener('scroll',kick,{passive:true});
-pin.addEventListener('pointermove',e=>{const r=pin.getBoundingClientRect();px=((e.clientX-r.left)/r.width-.5)*2;py=((e.clientY-r.top)/r.height-.5)*2;if(drag){dRy+=(e.clientX-sx)*.012;dRx+=(e.clientY-sy)*.008;sx=e.clientX;sy=e.clientY;}kick();});
-pin.addEventListener('pointerdown',e=>{if(e.target.closest('button,a'))return;drag=true;sx=e.clientX;sy=e.clientY;pin.style.cursor='grabbing';});
+pin.addEventListener('pointermove',e=>{if(e.pointerType!=='mouse')return;const r=pin.getBoundingClientRect();px=((e.clientX-r.left)/r.width-.5)*2;py=((e.clientY-r.top)/r.height-.5)*2;if(drag){dRy+=(e.clientX-sx)*.012;dRx+=(e.clientY-sy)*.008;sx=e.clientX;sy=e.clientY;}kick();});
+pin.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse'||e.target.closest('button,a'))return;drag=true;sx=e.clientX;sy=e.clientY;pin.style.cursor='grabbing';});
 const up=()=>{drag=false;pin.style.cursor='';};addEventListener('pointerup',up);addEventListener('pointercancel',up);
 /* botões: rolar pelo palco até o catálogo */
 let tw=0;function goCatalog(){const t=document.getElementById('catalogo');if(!t)return;const from=scrollY,to=t.getBoundingClientRect().top+scrollY-(hdr?hdr.offsetHeight:0);const dur=Math.min(3600,Math.max(1800,Math.abs(to-from)*.9)),t0=performance.now();cancelAnimationFrame(tw);
