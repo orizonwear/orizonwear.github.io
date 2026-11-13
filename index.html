@@ -2574,6 +2574,84 @@ function makeHoodie(front,back,tintMul){
  fit.add(g);g.position.y=-ctr;const wrap=new THREE.Group();wrap.add(fit);fit.scale.set(sc*Math.min(1.25,Math.max(.8,(front.width/front.height)*(box.max.y-box.min.y)/(box.max.x-box.min.x))),sc,sc);
  wrap.userData.H=H;return wrap;}
 
+/* ---------- molde plano de moletom (frente e costas) com volume leve ---------- */
+const TW=800,TH=900;
+const PATH=[['M',400,15],['C',455,15,520,40,530,95],['C',538,140,520,185,505,205],['C',560,222,600,235,625,255],['C',690,330,735,520,748,700],['L',752,792],['L',668,794],['L',672,702],['C',662,610,640,500,606,430],['L',600,845],['L',592,872],['L',208,872],['L',200,845],['L',194,430],['C',160,500,138,610,128,702],['L',132,794],['L',48,792],['L',52,700],['C',65,520,110,330,175,255],['C',200,235,240,222,295,205],['C',280,185,262,140,270,95],['C',280,40,345,15,400,15]];
+function tracePath(t){PATH.forEach(s=>{if(s[0]==='M')t.moveTo(s[1],s[2]);else if(s[0]==='L')t.lineTo(s[1],s[2]);else t.bezierCurveTo(s[1],s[2],s[3],s[4],s[5],s[6]);});}
+function shade(b,k){return 'rgb('+b.map(v=>Math.max(0,Math.min(255,Math.round(v*k)))).join(',')+')';}
+function drawTemplate(base,decal,isFront){
+ const S=2,c=document.createElement('canvas');c.width=TW*S;c.height=TH*S;const g=c.getContext('2d');g.scale(S,S);
+ const lum=(base[0]+base[1]+base[2])/765,line=lum>.5?'rgba(70,72,80,.85)':'rgba(200,205,215,.38)';
+ g.beginPath();tracePath(g);g.closePath();g.save();g.clip();
+ g.fillStyle=shade(base,1);g.fillRect(0,0,TW,TH);
+ // sombras suaves (volume pintado)
+ let gr=g.createLinearGradient(0,0,TW,0);gr.addColorStop(0,'rgba(0,0,0,.18)');gr.addColorStop(.18,'rgba(0,0,0,0)');gr.addColorStop(.82,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(0,0,0,.18)');g.fillStyle=gr;g.fillRect(0,0,TW,TH);
+ gr=g.createLinearGradient(0,200,0,870);gr.addColorStop(0,'rgba(255,255,255,'+(lum>.5?0:.05)+')');gr.addColorStop(1,'rgba(0,0,0,.10)');g.fillStyle=gr;g.fillRect(0,0,TW,TH);
+ // mangas: faixa de sombra interna
+ g.fillStyle='rgba(0,0,0,.10)';[[615,300,40,400],[145,300,40,400]].forEach(r=>{g.beginPath();g.ellipse(r[0]+(r[0]>400?18:22),r[1]+r[3]/2,14,r[3]/2,0,0,7);g.fill();});
+ // punhos e barra (ribana)
+ const rib=(x,y,w,h)=>{g.fillStyle=shade(base,lum>.5?.9:1.35);g.fillRect(x,y,w,h);g.strokeStyle=lum>.5?'rgba(0,0,0,.14)':'rgba(255,255,255,.10)';g.lineWidth=1.4;for(let i=x+6;i<x+w;i+=9){g.beginPath();g.moveTo(i,y);g.lineTo(i,y+h);g.stroke();}};
+ rib(660,700,100,100);rib(40,700,100,100);rib(190,805,420,70);
+ g.strokeStyle=line;g.lineWidth=3;[[660,700,762,700],[38,700,140,700],[190,805,610,805]].forEach(l=>{g.beginPath();g.moveTo(l[0],l[1]);g.lineTo(l[2],l[3]);g.stroke();});
+ // cava (costura da manga)
+ g.lineWidth=3.2;g.strokeStyle=line;[[625,256,602,330,604,380,606,430],[175,256,198,330,196,380,194,430]].forEach(s=>{g.beginPath();g.moveTo(s[0],s[1]);g.bezierCurveTo(s[2],s[3],s[4],s[5],s[6],s[7]);g.stroke();});
+ if(isFront){
+  // capuz: abertura em V
+  g.fillStyle=shade(base,lum>.5?.62:.5);g.beginPath();g.moveTo(333,72);g.bezierCurveTo(360,48,440,48,467,72);g.bezierCurveTo(490,95,468,150,400,205);g.bezierCurveTo(332,150,310,95,333,72);g.fill();
+  g.strokeStyle=line;g.lineWidth=3.4;g.stroke();
+  g.beginPath();g.moveTo(300,205);g.bezierCurveTo(330,220,370,215,400,205);g.bezierCurveTo(430,215,470,220,500,205);g.stroke();
+ }else{
+  // costas: capuz fechado + costura central
+  g.strokeStyle=line;g.lineWidth=3.2;g.beginPath();g.moveTo(295,205);g.bezierCurveTo(340,250,460,250,505,205);g.stroke();
+  g.lineWidth=2.2;g.beginPath();g.moveTo(400,16);g.bezierCurveTo(404,80,398,160,400,232);g.stroke();
+  g.fillStyle='rgba(0,0,0,.08)';g.beginPath();g.moveTo(295,205);g.bezierCurveTo(340,250,460,250,505,205);g.bezierCurveTo(470,225,330,225,295,205);g.fill();
+ }
+ // bolso canguru (só frente)
+ if(isFront){const pk=()=>{g.beginPath();g.moveTo(310,560);g.lineTo(490,560);g.bezierCurveTo(505,600,520,640,535,670);g.lineTo(535,805);g.lineTo(265,805);g.lineTo(265,670);g.bezierCurveTo(280,640,295,600,310,560);g.closePath();};
+  pk();g.fillStyle='rgba(0,0,0,.05)';g.fill();g.strokeStyle=line;g.lineWidth=3.4;g.stroke();
+  g.lineWidth=2;g.beginPath();g.moveTo(266,672);g.lineTo(266,804);g.moveTo(534,672);g.lineTo(534,804);g.stroke();}
+ // estampa da foto
+ if(decal&&decal.canvas){
+  const pw=decal.canvas.width,ph=decal.canvas.height;let sc=decal.k;
+  let w=pw*sc,h=ph*sc;const maxw=300,maxh=420;const f=Math.min(1,maxw/w,maxh/h);w*=f;h*=f;
+  let cx=400+(isFront?1:1)*decal.dx*f*0+decal.dx,cy=decal.dy;
+  cx=Math.max(200+w/2+8,Math.min(600-w/2-8,cx));cy=Math.max(225+h/2,Math.min(800-h/2-10,cy));
+  g.imageSmoothingQuality='high';g.drawImage(decal.canvas,cx-w/2,cy-h/2,w,h);}
+ g.restore();
+ g.strokeStyle=lum>.5?'rgba(30,30,36,.92)':'rgba(215,220,230,.55)';g.lineWidth=4.5;g.lineJoin='round';g.beginPath();tracePath(g);g.closePath();g.stroke();
+ return c;}
+function puffMap(){const S=1,c=document.createElement('canvas');c.width=TW;c.height=TH;const g=c.getContext('2d');g.fillStyle='#000';g.fillRect(0,0,TW,TH);
+ g.filter='blur(22px)';g.fillStyle='#fff';g.beginPath();tracePath(g);g.closePath();g.fill();
+ g.filter='blur(7px)';g.fillStyle='rgba(255,255,255,.55)';g.beginPath();tracePath(g);g.closePath();g.fill();
+ const t=new THREE.CanvasTexture(c);return t;}
+function flatDecal(info,H){if(!info||!info.canvas)return null;
+ const k=(TH-80)/H/1; // px da foto -> unidades do molde (H = altura da foto recortada)
+ return {canvas:info.canvas,k:k,dx:(info.cx-.5)*info.gw*k,dy:15+info.cy*(TH-43)};}
+function makeFlatHoodie(front,back,tintMul){
+ const fi=decalFrom(front,true),bi=back?decalFrom(back,false):{base:fi.base};
+ const base=fi.base.map(v=>v*tintMul),lum=(base[0]+base[1]+base[2])/765;
+ const f2=fi.canvas?Object.assign({},fi,{gw:front.width}):null,b2=bi.canvas?Object.assign({},bi,{gw:back.width}):null;
+ const dF=flatDecal(f2,front.height),dB=flatDecal(b2,(back||front).height);
+ if(dF)dF.k=(872-15)/front.height;if(dB)dB.k=(872-15)/(back||front).height;
+ if(dF){dF.dx=(fi.cx-.5)*front.width*dF.k;dF.dy=15+fi.cy*857;}
+ if(dB){dB.dx=-(bi.cx-.5)*(back||front).width*dB.k*-1;dB.dy=15+bi.cy*857;}
+ const texF=new THREE.CanvasTexture(drawTemplate(base,dF,true)),texB=new THREE.CanvasTexture(drawTemplate(base,dB,false));
+ [texF,texB].forEach(t=>{t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;});
+ const puff=puffMap();
+ const sh=new THREE.Shape();(function(){const w={moveTo:(x,y)=>sh.moveTo(x-TW/2,TH/2-y),lineTo:(x,y)=>sh.lineTo(x-TW/2,TH/2-y),bezierCurveTo:(a,b,c,d,e,f)=>sh.bezierCurveTo(a-TW/2,TH/2-b,c-TW/2,TH/2-d,e-TW/2,TH/2-f)};tracePath(w);})();
+ const depth=30,bev=14;
+ const eg=new THREE.ExtrudeGeometry(sh,{depth:depth,bevelEnabled:true,bevelThickness:bev,bevelSize:10,bevelSegments:5,curveSegments:24});eg.translate(0,0,-depth/2);
+ const sideM=new THREE.MeshStandardMaterial({color:new THREE.Color().setRGB(base[0]/255*.8,base[1]/255*.8,base[2]/255*.8,THREE.SRGBColorSpace),roughness:.95});
+ const grp=new THREE.Group();grp.add(new THREE.Mesh(eg,sideM));
+ function plate(tex,front){const sg=new THREE.ShapeGeometry(sh,24);const p=sg.attributes.position,uv=sg.attributes.uv;
+  for(let i=0;i<p.count;i++){let u=(p.getX(i)+TW/2)/TW,v=(p.getY(i)+TH/2)/TH;uv.setXY(i,front?u:1-u,v);}
+  const m=new THREE.MeshStandardMaterial({map:tex,color:(base[0]+base[1]+base[2])<200?0x9a9a9a:0xffffff,bumpMap:puff,bumpScale:front?2.2:2.2,roughness:.9,metalness:0,side:THREE.FrontSide,toneMapped:false,envMapIntensity:.6});
+  const me=new THREE.Mesh(sg,m);me.position.z=front?(depth/2+bev+.3):-(depth/2+bev+.3);if(!front){me.rotation.y=Math.PI;me.scale.x=1;}return me;}
+ const pF=plate(texF,true);grp.add(pF);
+ // costas: espelhar a geometria em x para a face apontar para -z
+ const pB=plate(texB,false);pB.scale.x=-1;grp.add(pB);
+ const k=4.5/857,wrap=new THREE.Group();grp.scale.setScalar(k);grp.position.y=0;wrap.add(grp);wrap.userData.H=4.5;return wrap;}
+
 function glowTex(){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');const gr=x.createRadialGradient(128,128,0,128,128,128);gr.addColorStop(0,'rgba(255,255,255,.5)');gr.addColorStop(.45,'rgba(255,255,255,.1)');gr.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=gr;x.fillRect(0,0,256,256);return new THREE.CanvasTexture(c);}
 const lightBack=new THREE.DirectionalLight(0xffffff,1.0);lightBack.position.set(-2,4,-6);scene.add(lightBack);
 async function loadPhotoHoodies(){
@@ -2588,8 +2666,8 @@ async function loadPhotoHoodies(){
   const [iw,ib]=await Promise.all([pick(pw),pick(pb)]);
   if(!iw||!ib)return false;
   const hw=Math.floor(iw.naturalWidth/2),hb=Math.floor(ib.naturalWidth/2);
-  const W=makeHoodie(cutHalf(iw,0,hw),cutHalf(iw,hw,hw),.94);
-  const B=makeHoodie(cutHalf(ib,0,hb),cutHalf(ib,hb,hb),1);
+  const W=makeFlatHoodie(cutHalf(iw,0,hw),cutHalf(iw,hw,hw),.94);
+  const B=makeFlatHoodie(cutHalf(ib,0,hb),cutHalf(ib,hb,hb),1);
   const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex(),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false}));
   glow.scale.set(wide?9:5.5,wide?9:5.5,1);scene.add(glow);photo.glow=glow;
   scene.add(W);scene.add(B);photo.W=W;photo.B=B;photo.ready=true;model.visible=false;kick();return true;
