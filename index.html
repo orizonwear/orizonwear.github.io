@@ -2402,7 +2402,7 @@ const pocket=new THREE.Mesh(new RoundedBoxGeometry(1.3,.6,.1,8,.05),fabric);pock
  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
  const m=new THREE.Mesh(new THREE.PlaneGeometry(.62,.155),new THREE.MeshBasicMaterial({map:t,transparent:true,opacity:.85,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2}));
  m.position.set(-.52,.62,.545);m.rotation.y=-.3;hood.add(m);hood.userData.logo=m;})();
-const model=new THREE.Group();model.add(hood);hood.position.y=.1;scene.add(model);
+const model=new THREE.Group();model.visible=false;model.add(hood);hood.position.y=.1;scene.add(model);
 model.scale.setScalar(.95);
 
 
@@ -2580,7 +2580,7 @@ const PATH=[['M',400,15],['C',455,15,520,40,530,95],['C',538,140,520,185,505,205
 function tracePath(t){PATH.forEach(s=>{if(s[0]==='M')t.moveTo(s[1],s[2]);else if(s[0]==='L')t.lineTo(s[1],s[2]);else t.bezierCurveTo(s[1],s[2],s[3],s[4],s[5],s[6]);});}
 function shade(b,k){return 'rgb('+b.map(v=>Math.max(0,Math.min(255,Math.round(v*k)))).join(',')+')';}
 function drawTemplate(base,decal,isFront){
- const S=2,c=document.createElement('canvas');c.width=TW*S;c.height=TH*S;const g=c.getContext('2d');g.scale(S,S);
+ const S=3,c=document.createElement('canvas');c.width=TW*S;c.height=TH*S;const g=c.getContext('2d');g.scale(S,S);
  const lum=(base[0]+base[1]+base[2])/765,line=lum>.5?'rgba(70,72,80,.85)':'rgba(200,205,215,.38)';
  g.beginPath();tracePath(g);g.closePath();g.save();g.clip();
  g.fillStyle=shade(base,1);g.fillRect(0,0,TW,TH);
@@ -2616,41 +2616,58 @@ function drawTemplate(base,decal,isFront){
   let w=pw*sc,h=ph*sc;const maxw=300,maxh=420;const f=Math.min(1,maxw/w,maxh/h);w*=f;h*=f;
   let cx=400+(isFront?1:1)*decal.dx*f*0+decal.dx,cy=decal.dy;
   cx=Math.max(200+w/2+8,Math.min(600-w/2-8,cx));cy=Math.max(225+h/2,Math.min(800-h/2-10,cy));
-  g.imageSmoothingQuality='high';g.drawImage(decal.canvas,cx-w/2,cy-h/2,w,h);}
+  g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';const tc=document.createElement('canvas');tc.width=Math.max(2,Math.round(w*S));tc.height=Math.max(2,Math.round(h*S));const tg=tc.getContext('2d');tg.imageSmoothingQuality='high';tg.drawImage(decal.canvas,0,0,tc.width,tc.height);try{const id=tg.getImageData(0,0,tc.width,tc.height),sd=id.data,src=new Uint8ClampedArray(sd),W2=tc.width,H2=tc.height;for(let y=1;y<H2-1;y++)for(let x=1;x<W2-1;x++){const o=(y*W2+x)*4;for(let ch=0;ch<3;ch++){const v=src[o+ch]*1.9-(src[o-4+ch]+src[o+4+ch]+src[o-W2*4+ch]+src[o+W2*4+ch])*.225;sd[o+ch]=v<0?0:v>255?255:v;}}tg.putImageData(id,0,0);}catch(e){}g.drawImage(tc,cx-w/2,cy-h/2,w,h);}
+ g.globalAlpha=.10;try{g.fillStyle=g.createPattern(FLEECE.image,'repeat');g.fillRect(0,0,TW,TH);}catch(e){}g.globalAlpha=1;
  g.restore();
  g.strokeStyle=lum>.5?'rgba(30,30,36,.92)':'rgba(215,220,230,.55)';g.lineWidth=4.5;g.lineJoin='round';g.beginPath();tracePath(g);g.closePath();g.stroke();
  return c;}
-function puffMap(){const S=1,c=document.createElement('canvas');c.width=TW;c.height=TH;const g=c.getContext('2d');g.fillStyle='#000';g.fillRect(0,0,TW,TH);
- g.filter='blur(22px)';g.fillStyle='#fff';g.beginPath();tracePath(g);g.closePath();g.fill();
- g.filter='blur(7px)';g.fillStyle='rgba(255,255,255,.55)';g.beginPath();tracePath(g);g.closePath();g.fill();
- const t=new THREE.CanvasTexture(c);return t;}
-function flatDecal(info,H){if(!info||!info.canvas)return null;
- const k=(TH-80)/H/1; // px da foto -> unidades do molde (H = altura da foto recortada)
- return {canvas:info.canvas,k:k,dx:(info.cx-.5)*info.gw*k,dy:15+info.cy*(TH-43)};}
+/* malha arredondada (inflada) a partir do contorno vetorial do molde */
+let SOFT=null;
+function buildSoftGrid(){
+ if(SOFT)return SOFT;
+ const mc=document.createElement('canvas');mc.width=TW;mc.height=TH;const mg=mc.getContext('2d');mg.fillStyle='#fff';mg.beginPath();tracePath(mg);mg.closePath();mg.fill();
+ const md=mg.getImageData(0,0,TW,TH).data;const inside=(x,y)=>{x=Math.round(x);y=Math.round(y);if(x<0||y<0||x>=TW||y>=TH)return false;return md[(y*TW+x)*4+3]>127;};
+ // contorno denso
+ const pts=[];{let cx=0,cy=0;PATH.forEach(s=>{if(s[0]==='M'){cx=s[1];cy=s[2];pts.push([cx,cy]);}else if(s[0]==='L'){for(let t=.05;t<=1.001;t+=.05)pts.push([cx+(s[1]-cx)*t,cy+(s[2]-cy)*t]);cx=s[1];cy=s[2];}else{for(let t=.04;t<=1.001;t+=.04){const u=1-t;pts.push([u*u*u*cx+3*u*u*t*s[1]+3*u*t*t*s[3]+t*t*t*s[5],u*u*u*cy+3*u*u*t*s[2]+3*u*t*t*s[4]+t*t*t*s[6]]);}cx=s[5];cy=s[6];}});}
+ const h=3.4,nx=Math.ceil(TW/h),ny=Math.ceil(TH/h),N=(nx+1)*(ny+1);
+ const X=new Float32Array(N),Y=new Float32Array(N),D=new Float32Array(N),IN=new Uint8Array(N),NX=new Float32Array(N),NY=new Float32Array(N);
+ for(let j=0;j<=ny;j++)for(let i=0;i<=nx;i++){const k=j*(nx+1)+i,x=i*h,y=j*h;X[k]=x;Y[k]=y;IN[k]=inside(x,y)?1:0;
+  let best=1e9,bx=x,by=y;for(let q=0;q<pts.length;q++){const dx=pts[q][0]-x,dy=pts[q][1]-y,dd=dx*dx+dy*dy;if(dd<best){best=dd;bx=pts[q][0];by=pts[q][1];}}
+  D[k]=IN[k]?Math.sqrt(best):0;NX[k]=bx;NY[k]=by;}
+ const used=new Uint8Array(N),tris=[];
+ for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const a=j*(nx+1)+i,b=a+1,c=a+nx+1,d=c+1;if(IN[a]||IN[b]||IN[c]||IN[d]){tris.push(a,c,b,b,c,d);used[a]=used[b]=used[c]=used[d]=1;}}
+ for(let k=0;k<N;k++)if(used[k]&&!IN[k]){X[k]=NX[k];Y[k]=NY[k];}
+ // bolso (relevo suave só na frente)
+ const pc=document.createElement('canvas');pc.width=TW;pc.height=TH;const pg=pc.getContext('2d');pg.filter='blur(7px)';pg.fillStyle='#fff';pg.beginPath();pg.moveTo(310,560);pg.lineTo(490,560);pg.bezierCurveTo(505,600,520,640,535,670);pg.lineTo(535,805);pg.lineTo(265,805);pg.lineTo(265,670);pg.bezierCurveTo(280,640,295,600,310,560);pg.closePath();pg.fill();
+ const pd=pg.getImageData(0,0,TW,TH).data;const pk=(x,y)=>pd[((Math.max(0,Math.min(TH-1,Math.round(y))))*TW+Math.max(0,Math.min(TW-1,Math.round(x))))*4+3]/255;
+ for(let it=0;it<2;it++){const o=D.slice();for(let j=1;j<ny;j++)for(let i=1;i<nx;i++){const q=j*(nx+1)+i;if(!used[q]||!IN[q])continue;D[q]=(o[q]*4+o[q-1]+o[q+1]+o[q-nx-1]+o[q+nx+1])/8;}}
+ const Z=new Float32Array(N),ZF=new Float32Array(N),PK=new Float32Array(N);
+ const R=34,sm=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
+ for(let k=0;k<N;k++){if(!used[k]){continue;}const d=Math.min(D[k],R);let z=Math.sqrt(Math.max(0,d*(2*R-d)));
+  z+=34*sm(36,150,D[k]);
+  const fo=foldAt(X[k]*.011,Y[k]*.011,2.3)*3.2*sm(0,46,D[k]);Z[k]=z+fo;PK[k]=pk(X[k],Y[k]);}
+ for(let it=0;it<3;it++){const o=Z.slice();for(let j=1;j<ny;j++)for(let i=1;i<nx;i++){const q=j*(nx+1)+i;if(!used[q]||!IN[q])continue;Z[q]=(o[q]*2+o[q-1]+o[q+1]+o[q-nx-1]+o[q+nx+1]+(o[q-nx]+o[q+nx]+o[q-nx-2]+o[q+nx+2])*.5)/8;}}
+ SOFT={nx,ny,N,X,Y,Z,PK,tris,used,IN};return SOFT;}
 function makeFlatHoodie(front,back,tintMul){
  const fi=decalFrom(front,true),bi=back?decalFrom(back,false):{base:fi.base};
  const base=fi.base.map(v=>v*tintMul),lum=(base[0]+base[1]+base[2])/765;
- const f2=fi.canvas?Object.assign({},fi,{gw:front.width}):null,b2=bi.canvas?Object.assign({},bi,{gw:back.width}):null;
- const dF=flatDecal(f2,front.height),dB=flatDecal(b2,(back||front).height);
- if(dF)dF.k=(872-15)/front.height;if(dB)dB.k=(872-15)/(back||front).height;
- if(dF){dF.dx=(fi.cx-.5)*front.width*dF.k;dF.dy=15+fi.cy*857;}
- if(dB){dB.dx=-(bi.cx-.5)*(back||front).width*dB.k*-1;dB.dy=15+bi.cy*857;}
+ const bk=back||front;
+ const dF=fi.canvas?{canvas:fi.canvas,k:(872-15)/front.height,dx:(fi.cx-.5)*front.width*((872-15)/front.height),dy:15+fi.cy*857}:null;
+ const dB=bi.canvas?{canvas:bi.canvas,k:(872-15)/bk.height,dx:(bi.cx-.5)*bk.width*((872-15)/bk.height)*-1*-1,dy:15+bi.cy*857}:null;
  const texF=new THREE.CanvasTexture(drawTemplate(base,dF,true)),texB=new THREE.CanvasTexture(drawTemplate(base,dB,false));
- [texF,texB].forEach(t=>{t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;});
- const puff=puffMap();
- const sh=new THREE.Shape();(function(){const w={moveTo:(x,y)=>sh.moveTo(x-TW/2,TH/2-y),lineTo:(x,y)=>sh.lineTo(x-TW/2,TH/2-y),bezierCurveTo:(a,b,c,d,e,f)=>sh.bezierCurveTo(a-TW/2,TH/2-b,c-TW/2,TH/2-d,e-TW/2,TH/2-f)};tracePath(w);})();
- const depth=30,bev=14;
- const eg=new THREE.ExtrudeGeometry(sh,{depth:depth,bevelEnabled:true,bevelThickness:bev,bevelSize:10,bevelSegments:5,curveSegments:24});eg.translate(0,0,-depth/2);
- const sideM=new THREE.MeshStandardMaterial({color:new THREE.Color().setRGB(base[0]/255*.8,base[1]/255*.8,base[2]/255*.8,THREE.SRGBColorSpace),roughness:.95});
- const grp=new THREE.Group();grp.add(new THREE.Mesh(eg,sideM));
- function plate(tex,front){const sg=new THREE.ShapeGeometry(sh,24);const p=sg.attributes.position,uv=sg.attributes.uv;
-  for(let i=0;i<p.count;i++){let u=(p.getX(i)+TW/2)/TW,v=(p.getY(i)+TH/2)/TH;uv.setXY(i,front?u:1-u,v);}
-  const m=new THREE.MeshStandardMaterial({map:tex,color:(base[0]+base[1]+base[2])<200?0x9a9a9a:0xffffff,bumpMap:puff,bumpScale:front?2.2:2.2,roughness:.9,metalness:0,side:THREE.FrontSide,toneMapped:false,envMapIntensity:.6});
-  const me=new THREE.Mesh(sg,m);me.position.z=front?(depth/2+bev+.3):-(depth/2+bev+.3);if(!front){me.rotation.y=Math.PI;me.scale.x=1;}return me;}
- const pF=plate(texF,true);grp.add(pF);
- // costas: espelhar a geometria em x para a face apontar para -z
- const pB=plate(texB,false);pB.scale.x=-1;grp.add(pB);
- const k=4.5/857,wrap=new THREE.Group();grp.scale.setScalar(k);grp.position.y=0;wrap.add(grp);wrap.userData.H=4.5;return wrap;}
+ [texF,texB].forEach(t=>{t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=Math.min(16,renderer.capabilities.getMaxAnisotropy());});
+ const G=buildSoftGrid(),k=4.5/857;
+ const grain=new THREE.CanvasTexture(FLEECE.image);grain.wrapS=grain.wrapT=THREE.RepeatWrapping;grain.repeat.set(70,80);
+ const mk=(tex)=>new THREE.MeshPhysicalMaterial({map:tex,color:(base[0]+base[1]+base[2])<200?0xa4a4a4:0xffffff,roughness:.9,metalness:0,sheen:.7,sheenRoughness:.65,sheenColor:new THREE.Color(lum>.5?0xffffff:0x777c88),bumpMap:grain,bumpScale:.5,envMapIntensity:lum>.5?.55:.9,toneMapped:false});
+ function surf(sign,tex){const g=new THREE.BufferGeometry(),pos=new Float32Array(G.N*3),uv=new Float32Array(G.N*2);
+  for(let q=0;q<G.N;q++){const x=G.X[q],y=G.Y[q];const z=(G.Z[q]+(sign>0?G.PK[q]*7:0))*sign;pos[q*3]=(x-TW/2)*k;pos[q*3+1]=(TH/2-y)*k;pos[q*3+2]=z*k;const u=x/TW;uv[q*2]=sign>0?u:1-u;uv[q*2+1]=1-y/TH;}
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('uv',new THREE.BufferAttribute(uv,2));
+  const t=G.tris;let idx;if(sign>0)idx=t.slice();else{idx=new Array(t.length);for(let q=0;q<t.length;q+=3){idx[q]=t[q];idx[q+1]=t[q+2];idx[q+2]=t[q+1];}}
+  g.setIndex(idx);g.computeVertexNormals();
+  {const nn=g.attributes.normal,nx=G.nx;for(let it=0;it<3;it++){const o=nn.array.slice();for(let j=1;j<G.ny;j++)for(let i=1;i<nx;i++){const q=j*(nx+1)+i;if(!G.used[q])continue;let ax=o[q*3]*2,ay=o[q*3+1]*2,az=o[q*3+2]*2;[q-1,q+1,q-nx-1,q+nx+1].forEach(r=>{if(G.used[r]){ax+=o[r*3];ay+=o[r*3+1];az+=o[r*3+2];}});const l=Math.hypot(ax,ay,az)||1;nn.array[q*3]=ax/l;nn.array[q*3+1]=ay/l;nn.array[q*3+2]=az/l;}}nn.needsUpdate=true;}
+  return new THREE.Mesh(g,mk(tex));}
+ const grp=new THREE.Group();grp.add(surf(1,texF));grp.add(surf(-1,texB));
+ const wrap=new THREE.Group();wrap.add(grp);wrap.userData.H=4.5;return wrap;}
 
 function glowTex(){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');const gr=x.createRadialGradient(128,128,0,128,128,128);gr.addColorStop(0,'rgba(255,255,255,.5)');gr.addColorStop(.45,'rgba(255,255,255,.1)');gr.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=gr;x.fillRect(0,0,256,256);return new THREE.CanvasTexture(c);}
 const lightBack=new THREE.DirectionalLight(0xffffff,1.0);lightBack.position.set(-2,4,-6);scene.add(lightBack);
@@ -2670,11 +2687,11 @@ async function loadPhotoHoodies(){
   const B=makeFlatHoodie(cutHalf(ib,0,hb),cutHalf(ib,hb,hb),1);
   const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex(),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false}));
   glow.scale.set(wide?9:5.5,wide?9:5.5,1);scene.add(glow);photo.glow=glow;
-  scene.add(W);scene.add(B);photo.W=W;photo.B=B;photo.ready=true;model.visible=false;kick();return true;
+  scene.add(W);scene.add(B);photo.W=W;photo.B=B;photo.ready=true;photo.rv=0;model.visible=false;kick();return true;
  }catch(err){console.warn('fotos 3D indisponíveis, usando modelo simples',err);return false;}
 }
 (function waitProducts(n){let ok=false;try{ok=typeof state!=='undefined'&&state.products&&state.products.length;}catch(e){}
- if(ok){loadPhotoHoodies();return;}if(n<80)setTimeout(()=>waitProducts(n+1),400);})(0);
+ if(ok){loadPhotoHoodies().then(r=>{if(!r){model.visible=true;kick();}});return;}if(n<80)setTimeout(()=>waitProducts(n+1),400);else{model.visible=true;kick();}})(0);
 
 /* ---------- galeria 3D com as fotos do catálogo ---------- */
 const gallery=new THREE.Group();gallery.visible=false;scene.add(gallery);
@@ -2719,7 +2736,7 @@ for(let i=0;i<22;i++){const t=new THREE.Mesh(new THREE.TorusGeometry(2.6+(i%3)*.
 const N=700,pos=new Float32Array(N*3);for(let i=0;i<N;i++){pos[i*3]=(Math.random()-.5)*26;pos[i*3+1]=(Math.random()-.5)*16;pos[i*3+2]=6-Math.random()*60;}
 const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.BufferAttribute(pos,3));
 const dustTex=(function(){const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d');const gr=x.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.4,'rgba(255,255,255,.55)');gr.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=gr;x.fillRect(0,0,64,64);return new THREE.CanvasTexture(c);})();
-const dustM=new THREE.PointsMaterial({color:0xffffff,size:.07,map:dustTex,transparent:true,depthWrite:false,opacity:.45,sizeAttenuation:true});
+const dustM=new THREE.PointsMaterial({color:0xffffff,size:.035,transparent:true,depthWrite:false,opacity:.4,sizeAttenuation:true});
 
 
 /* ---------- tamanho ---------- */
@@ -2772,18 +2789,18 @@ function frame(now){
  model.rotation.y=ry+px*.25+dRy;model.rotation.x=py*.1+dRx;model.rotation.z=lerp(0,.35,c);
  model.scale.setScalar(ms);
  if(photo.ready){
-  const W=photo.W,B=photo.B,k=wide?1:.92;
+  const W=photo.W,B=photo.B,k=wide?1:1.25;photo.rv=Math.min(1,photo.rv+dt/1.2);const rvE=ease(photo.rv);
   const ra=ease(seg(p,.12,.3)),rb=ease(seg(p,.38,.5)),rc=ease(seg(p,.55,.7)),rd=ease(seg(p,.7,.84));
   const hx=wide?1.7:0,hy=0;
   // branco
   let wx=lerp(hx,wide?-5:-4,rb),wy=lerp(hy,hy+3.2,rb),wz=lerp(0,-7,rb),ws=lerp(.66,.76,ra);ws=lerp(ws,.35,rb);
   let wr=lerp(-.35,Math.PI,ra);wr=lerp(wr,Math.PI+1.4,rb);
-  W.position.set(wx,wy+idle,wz);W.scale.setScalar(ws*k);W.rotation.set(py*.06+dRx*.5,wr+px*.2+dRy,0);W.visible=rb<.995;
+  W.position.set(wx,wy+idle,wz);W.scale.setScalar(ws*k*rvE);W.rotation.set(py*.06+dRx*.5,wr+px*.2+dRy+(1-rvE)*1.4,0);W.visible=rb<.995;
   // preto
   const bin=rb;let bx=lerp(wide?8:6,hx,bin),by=lerp(hy-1.5,hy,bin),bz=lerp(-4,0,bin),bs=lerp(.4,.72,bin);
   bx=lerp(bx,wide?6:5,rd);by=lerp(by,hy+5,rd);bz=lerp(bz,-10,rd);bs=lerp(bs,.35,rd);
   let br=lerp(-1.6,0,bin);br=lerp(br,Math.PI,rc);br=lerp(br,Math.PI+1.2,rd);
-  B.position.set(bx,by+idle,bz);B.scale.setScalar(bs*k);B.rotation.set(py*.06+dRx*.5,br+px*.2+dRy,0);B.visible=bin>.005&&rd<.995;
+  B.position.set(bx,by+idle,bz);B.scale.setScalar(bs*k*rvE);B.rotation.set(py*.06+dRx*.5,br+px*.2+dRy,0);B.visible=bin>.005&&rd<.995;
   photo.glow.material.opacity=(1-ease(seg(p,.4,.55)))*.9;photo.glow.position.set(W.position.x*.9+(wide?0:0),W.position.y,W.position.z-1.2);photo.glow.visible=W.visible;
  }
  // câmera
